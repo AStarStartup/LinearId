@@ -1,0 +1,40 @@
+{
+  "name": "linearid",
+  "license": "MIT",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AStarStartup/LinearId.git"
+  },
+  "homepage": "https://github.com/AStarStartup/LinearId",
+  "keywords": [
+    "shard",
+    "sharding",
+    "database sharding",
+    "unique id",
+    "uid",
+    "uuid",
+    "ulid",
+    "naming",
+    "name server",
+    "ipv6",
+    "mac address"
+  ],
+  "scripts": {
+    "build": "tsup index.ts --format cjs, esm --dts"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.26.2",
+    "@types/node": "^20.8.0",
+    "address": "^2.0.1",
+    "ts-node": "^10.9.1",
+    "tsup": "^6.5.0",
+    "typescript": "^4.9.4"
+  }
+}

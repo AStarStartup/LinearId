@@ -1,2 +1,3 @@
-node_modules
+Package/node_modules
+Test/node_modules
 dist
