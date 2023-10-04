@@ -18,8 +18,9 @@ function LidTests(amount) {
   return lids;
 }
 
-console.log("LID Source:" + LIDSource + " 0b'" + BigIntToBinary(LIDSource));
-console.log("Printing test LIDs");
-LidTests(10).map((lid, index) => {
+let test_number = 1000;
+console.log("Printing " + test_number + " test LIDs");
+LidTests(test_number).map((lid, index) => {
   console.log(index + ".) " + lid + " 0b'" + BigIntToBinary(lid));
 });
+console.log("LID Source:" + LIDSource + " 0b'" + BigIntToBinary(LIDSource));
