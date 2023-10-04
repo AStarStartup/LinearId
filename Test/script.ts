@@ -1,8 +1,14 @@
-//import { LID, LIDAddress } from "linearid";
-const { LID, LIDAddress } = require("linearid");
+//import { LID, LIDSource } from "linearid";
+const { LID, LIDSource } = require("linearid");
 
-function dec2bin(dec) {
-  return (dec >>> 0).toString(2);
+function BigIntToBinary(value) {
+  let result = "";
+  let mask = BigInt(0x8000000000000000)
+  while(mask != 0n) {
+    result += (value & mask) ? '1' : '0';
+    mask = mask >> 1n;
+  }
+  return result;
 }
 
 function LidTests(amount) {
@@ -12,8 +18,8 @@ function LidTests(amount) {
   return lids;
 }
 
-console.log("LID Address:" + LIDAddress + " 0b'" + dec2bin(LIDAddress));
+console.log("LID Source:" + LIDSource + " 0b'" + BigIntToBinary(LIDSource));
 console.log("Printing test LIDs");
 LidTests(10).map((lid, index) => {
-  console.log(index + ".) " + lid + " 0b'" + dec2bin(lid));
-})
+  console.log(index + ".) " + lid + " 0b'" + BigIntToBinary(lid));
+});
