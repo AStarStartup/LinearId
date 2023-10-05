@@ -1,22 +1,23 @@
-An npm package for generating unique IDs for use with sharded databases like PlanetScale.
+An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale.
 
-LinearId works using two 64-bit where where the first word is a microsecond ticker bit shifting up 16 bits and ORed with a 16-bit spin ticker. The current microsecond time is stored and each time a new LinearId is created it checks if it's the next millisecond and if it is then  it resets the ticker, else it increments the spin ticker.
+LinearId (LID) works using two 64-bit where where the first MSB word is a microsecond ticker bit shifting up 22 bits and ORed with a 22-bit spin ticker. The current microsecond time is stored and each time a new LID is created it checks if it's the next millisecond and if it is then  it resets the ticker, else it increments the spin ticker. This limits you to a total of 4194304 calls to LID() per millisecond, at which time the system will spin wait until the next millisecond, but this is never expected to actually happen in real life.
 
-This means that there is a hard limit of 2^16 or 65536 maximum calls to LID per
-second. For this reason it's recommended to use LID before you make calls to the database to ensure you can't reach the 16-bit ticker cap.
+## Quickstart
 
-The other 64-bit word is a unique identifier created by bitwise XORing the bytes of the computer's IPv6 address, which uses 5 bytes from LSb to MSb. The algorithm then XORs the MAC Address byte-by-byte from MSb to LSb. This produces a nice spread out of the bits without any clumping. Often the MAC Address gets randomly generated.
+**1.** Install npm package:
 
-It's high improbable to get the IPAddress or MAC Address back after you XOR them. First let's look at the XOR truth table:
+```BASH
+npm install linearid
+```
 
-| A | B | XOR |
-|:-:|:-:|:---:|
-| 0 | 0 |  0  |
-| 0 | 1 |  1  |
-| 1 | 0 |  1  |
-| 1 | 1 |  0  |
+**2.** Add code:
 
-This means that for each bit in a 64-bit LID address, we would have two bits that it can be, which means it's equivalent to 128-bit encryption. While I would not trust this level of encryption for selling narcotics on the dark web, most guys would trust their marriage to that level of encryption.
+```TypeScript
+const { LID, LIDSource, LIDPrint, LIDParse, RandomBigInt
+} = require("linearid");
+
+```
+
 
 ## License
 
