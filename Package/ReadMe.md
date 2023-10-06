@@ -1,8 +1,8 @@
-An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale.
+An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic). Another solution is to use [(ULID)[https://github.com/ulid/spec], but it uses an 80-byte random number in the LSB and millisecond timestamp in the MSB, and that uses a lot of CPU. We want an approach that doesn't have to generate any random numbers at runtime.
 
-LinearId (LID) works using two 64-bit where where the first MSB word is a microsecond ticker bit shifting up 22 bits and ORed with a 22-bit spin ticker. The current microsecond time is stored and each time a new LID is created it checks if it's the next millisecond and if it is then  it resets the ticker, else it increments the spin ticker. This limits you to a total of 4194304 calls to LID() per millisecond, at which time the system will spin wait until the next millisecond, but this is never expected to actually happen in real life.
+LinearId (LID) works using two 64-bit words where where the first MSB word is a microsecond ticker bit shifted up 22 bits and ORed with a 22-bit spin ticker. The current microsecond time is stored and each time a new LID is created it checks if it's the next millisecond and if it is then  it resets the ticker, else it increments the spin ticker. This limits you to a total of 4194304 calls to LID() per millisecond, at which time the system will spin wait until the next millisecond, but this is never expected to actually happen in real life except in some rare edge cases.
 
-The LSB word is a 64-bit cryptographically-secure randomly generated value.
+The LSB word is a cryptographically-secure randomly generated 64-bit number that gets generated upon boot. This allows your servers to name new database entries on one server and when they submit new database entries they will be mostly sorted by the millisecond of the request generation. SQL table data is theoretically unordered and we only have second timestamps, so the fastest way to search through table rows is to look for the date. Because the LID stores a millisecond timestamp, we can quickly extract the seconds timestamp to use to search through the SQL database by date and uid.
 
 ## Quickstart
 
@@ -15,12 +15,12 @@ npm install linearid
 **2.** Add to your Drizzle ORM schema:
 
 ```TypeScript
-
-import { mysqlTable, varbinary } from 'drizzle-orm/mysql-core';
+import { datetime, mysqlTable, varbinary } from "drizzle-orm/mysql-core";
 
 
 export const UserAccounts = mysqlTable('UserAccounts', {
 	uid: varbinary('uid', { length: 16}).primaryKey(),
+	created: datetime('datetime'),
   //...
 });
 ```
@@ -28,12 +28,20 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 **3.** Add to your code:
 
 ```TypeScript
-const { LID, LIDPrint, LIDParse } = require("linearid");
+const { LID, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
 
 [msb, lsb] = LID();
 const Example = LIDPrint(msb, lsb);
-console.log('\nExample LID hex string:');
+console.log('\nExample LID hex string:0x' + Example);
 [msb2, lsb2] = LIDParse(Example);
+
+const TimeS = LIDSeconds(msb);
+
+let results = await db.select().from(UserAccounts).where(
+  and(
+    eq(users.created, TimeS), 
+    eq(users.uid, LID())
+));
 ```
 
 ## License
