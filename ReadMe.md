@@ -1,4 +1,4 @@
-An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic). Another solution is to use [(ULID)[https://github.com/ulid/spec], but it uses an 80-byte random number in the LSB and millisecond timestamp in the MSB, and that uses a lot of CPU. We want an approach that doesn't have to generate any random numbers at runtime.
+An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic). Another solution is to use [(ULID)(https://github.com/ulid/spec), but it uses an 80-byte random number in the LSB and millisecond timestamp in the MSB, and that uses a lot of CPU. We want an approach that doesn't have to generate any random numbers at runtime.
 
 LinearId (LID) works using two 64-bit words where where the first MSB word is a microsecond ticker bit shifted up 22 bits and ORed with a 22-bit spin ticker. The current microsecond time is stored and each time a new LID is created it checks if it's the next millisecond and if it is then  it resets the ticker, else it increments the spin ticker. This limits you to a total of 4194304 calls to LID() per millisecond, at which time the system will spin wait until the next millisecond, but this is never expected to actually happen in real life except in some rare edge cases.
 
@@ -28,19 +28,20 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 **3.** Add to your code:
 
 ```TypeScript
-const { LID, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
+const { LIDNext, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
 
-[msb, lsb] = LID();
+[lsb, msb] = LIDNext();
 const Example = LIDPrint(msb, lsb);
 console.log('\nExample LID hex string:0x' + Example);
-[msb2, lsb2] = LIDParse(Example);
+[lsb2, msb2] = LIDParse(Example);
+let lid = LEDNextBuffer();
 
 const TimeS = LIDSeconds(msb);
 
 let results = await db.select().from(UserAccounts).where(
   and(
     eq(users.created, TimeS), 
-    eq(users.uid, LID())
+    eq(users.uid, lid)
 ));
 ```
 

@@ -6,9 +6,14 @@ let time_last: bigint = BigInt(new Date().getTime());
 let ticker: bigint = 0n;
 let SpinTickerBitCount: bigint = 22n;
 
-/* Generates a Linear ID using a microsecond timestamp and a spin counter.
-Bit Pattern: [ 42-bits Microsecond Timestamp | 22-bits spin counter ] */
-export function LIDNext(): bigint {
+/* A Linear ID with 42-bit MSb millisecond ticker, 22-bit sub-ms spin ticker,
+and 64-bit server ID. */
+export type LID = [bigint, bigint];
+
+/* Generates a Linear ID Most-significant Word from a microsecond timestamp
+and a spin counter.
+Bit Pattern: `[ `42-bits Microsecond Timestamp | 22-bits spin counter ] */
+export function LIDNextMSW(): bigint {
   let time_now = BigInt(new Date().getTime());
   if (time_now != time_last) {
     time_last = time_now;
@@ -32,49 +37,102 @@ export function RandomBigInt(): bigint {
 
 export const LIDSource: bigint = RandomBigInt();
 
-/* Returns [ LIDNext(), LIDSource ]. */
-export function LID(): [bigint, bigint] {
-  return [ LIDNext(), LIDSource ];
-}
-
-/* Extracts the milliseconds timestamp. */
-export function LIDMilliseconds(msb: bigint) {
-  return Number(msb >> SpinTickerBitCount);
-}
-
-/* Extracts the seconds timestamp. */
-export function LIDSeconds(msb: bigint, epoch: number) {
-  return (LIDMilliseconds(msb) / 1000) - epoch;
-}
-
-/* Prints the LID to string. */
-export function LIDString(target: string = '') {
-  return LIDPrint(LIDNext(), LIDSource, target);
+/* Generates the next LID as an array of two bigint.
+@return [LIDNextMSW(), LIDSource]. */
+export function LIDNext(): LID {
+  return [LIDSource, LIDNextMSW()];
 }
 
 /* Converts a bigint to a 2-byte hex string. */
-export function BigIntToHex(value: bigint) {
+export function BigIntByteToHex(value: bigint): string {
   let hex = value.toString(16);
   if(value < 16) return '0' + hex;
   return hex;
 }
 
-/* A Linear Id string. */
-export function LIDPrint(msb: bigint, lsb: bigint, dest: string = '') {
+/* Prints the Linear Id to the dest string. */
+export function LIDPrint(lid: LID, dest: string = ''): string {
+  const [LSW, MSW] = lid;
   let shift = 56n;
   while (shift > 0) {
-    dest += BigIntToHex((msb >> shift) & 0xffn);
+    dest += BigIntByteToHex((MSW >> shift) & 0xffn);
     shift -= 8n;
   }
-  dest += BigIntToHex(msb & 0xffn);
+  dest += BigIntByteToHex(MSW & 0xffn);
 
-  shift = BigInt(56);
+  shift = 56n;
   while (shift > 0) {
-    dest += BigIntToHex((lsb >> shift) & 0xffn);
+    dest += BigIntByteToHex((LSW >> shift) & 0xffn);
     shift -= 8n;
   }
-  dest += BigIntToHex(lsb & 0xffn);
+  dest += BigIntByteToHex(LSW & 0xffn);
   return dest;
+}
+
+/* Generates the next LID as a string or prints it to the dest. */
+export function LIDNextString(dest: string = ''): string {
+  return LIDPrint(LIDNext (), dest);
+}
+
+/* Generates the next LID as a Buffer.
+@return A Buffer containing [LIDSource, LIDNextMSW()]. */
+export function LIDNextBuffer(lid: LID | undefined = undefined) {
+  const [LSW, MSW] = (lid == undefined) ? [LIDSource, LIDNextMSW()] 
+                                        : [lid[0], lid[1]];
+  const Buf = Buffer.alloc(16);
+  for (let index = 0; index < 8; index++) {
+    const Shift = BigInt(index << 3); // << 3 to * 8.
+    Buf[index    ] = Number((LSW >> Shift) & 0xffn);
+    Buf[index + 8] = Number((MSW >> Shift) & 0xffn);
+  }
+  return Buf;
+}
+
+/* Converts a LID in a buffer to a [bigint, bigint] LID. */
+export function LIDFromBuffer(lid: Buffer) {
+  let LSW = 0n;
+  let MSW = 0n;
+  for (let index = 0; index < 8; index++) {
+    const LSB = lid[index    ];
+    const MSB = lid[index + 8];
+    if(LSB == undefined || MSB == undefined) return [0n, 0n];
+    const Shift = BigInt(index << 3); // << 3 to * 8.
+    LSW |= BigInt(LSB) << Shift;
+    MSW |= BigInt(MSB) << Shift;
+  }
+  return [LSW, MSW];
+}
+
+/* Extracts the LSW from the LID. */
+export function LIDBufferLSW(lid: Buffer) {
+  let word = 0n;
+  for(let index = 0; index < 8;) {
+    let b = lid[index];
+    if(b == undefined) return 0n;
+    word |= BigInt(b) << BigInt(index << 3); // << 3 to * 8.
+  }
+  return word;
+}
+
+/* Extracts the MSW from the LID. */
+export function LIDBufferMSW(lid: Buffer) {
+  let word = 0n;
+  for(let index = 0; index < 8;) {
+    let b = lid[index + 8];
+    if(b == undefined) return 0n;
+    word |= BigInt(b) << BigInt(index << 3); // << 3 to * 8.
+  }
+  return word;
+}
+
+/* Extracts the milliseconds timestamp. */
+export function LIDMilliseconds(msw: bigint): number {
+  return Number(msw >> SpinTickerBitCount);
+}
+
+/* Extracts the seconds timestamp. */
+export function LIDSeconds(msw: bigint): number {
+  return LIDMilliseconds(msw) / 1000;
 }
 
 /* Converts a hex character string to a bigint. */
@@ -85,43 +143,43 @@ export function HexToBigInt(hex: string | undefined): bigint {
   if(c <= '9'.charCodeAt(0)) 
     return BigInt(c - '0'.charCodeAt(0));
   if(c >= 'a'.charCodeAt(0)) 
-    return BigInt(c) - BigInt('a'.charCodeAt(0)) + 10n;
+    return BigInt(c - 'a'.charCodeAt(0) + 10);
   if(c < 'A'.charCodeAt(0) || c > 'Z'.charCodeAt(0))
     return -1n;
-  return BigInt(c - 'A'.charCodeAt(0)) + 10n;
+  return BigInt(c - 'A'.charCodeAt(0) + 10);
 }
 
 /* Parses a LID from the input.
-@return Returns [ msb: bigint, lsb: bigint ] and lsb and msb will be 0 up 
+@return Returns [ msw: bigint, lsw: bigint ] and lsw and msw will be 0 up 
 error. */
-export function LIDParse(input: string): [BigInt, BigInt] {
-  let lsb = 0n;
-  let msb = 0n;
-  if(input == undefined || input.length < 32) return [msb, lsb];
-  // Read MSB
+export function LIDParse(input: string): LID {
+  let lsw = 0n;
+  let msw = 0n;
+  if(input == undefined || input.length < 32) return [lsw, msw];
+  // Read MSW
   let index = 0;
   let shift = 60n;
   while(shift > 0n) {
     let c = HexToBigInt(input[index++]);
     if(c < 0n) return [0n, 0n];
-    msb |= c << shift;
+    msw |= c << shift;
     shift -= 4n;
   }
   let c = HexToBigInt(input[index++]);
   if(c < 0n) return [0n, 0n];
-  msb |= c;
+  msw |= c;
 
-  // Read LSB
+  // Read LSW
   shift = 60n;
   while(shift > 0) {
     c = HexToBigInt(input[index++]);
     if(c < 0n) return [0n, 0n];
-    lsb |= c << shift;
+    lsw |= c << shift;
     shift -= 4n;
   }
   c = HexToBigInt(input[index++]);
   if(c < 0n) return [0n, 0n];
-  lsb |= c;
+  lsw |= c;
   
-  return [msb, lsb];
+  return [lsw, msw];
 }

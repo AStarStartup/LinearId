@@ -1,13 +1,22 @@
 {
   "name": "linearid",
   "license": "MIT",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "package.json"
   ],
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "types": "./dist/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AStarStartup/LinearId.git"
@@ -27,7 +36,8 @@
     "mac address"
   ],
   "scripts": {
-    "build": "tsup index.ts --format cjs, esm --dts"
+    "build": "tsup index.ts --format cjs, esm --dts",
+    "test": "node ../Test/Script.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.2",
