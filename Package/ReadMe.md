@@ -20,7 +20,7 @@ import { datetime, mysqlTable, varbinary } from "drizzle-orm/mysql-core";
 
 export const UserAccounts = mysqlTable('UserAccounts', {
 	uid: varbinary('uid', { length: 16}).primaryKey(),
-	created: datetime('created'),
+	created: datetime('datetime'),
   //...
 });
 ```
@@ -28,19 +28,20 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 **3.** Add to your code:
 
 ```TypeScript
-const { LID, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
+const { LIDNext, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
 
-[msb, lsb] = LID();
-const LIDHexString = LIDPrint(msb, lsb);
-console.log('\nExample LID hex string:0x' + LIDHexString);
-[msb2, lsb2] = LIDParse(LIDHexString);
+[lsb, msb] = LIDNext();
+const Example = LIDPrint(msb, lsb);
+console.log('\nExample LID hex string:0x' + Example);
+[lsb2, msb2] = LIDParse(Example);
+let lid = LEDNextBuffer();
 
 const TimeS = LIDSeconds(msb);
 
 let results = await db.select().from(UserAccounts).where(
   and(
     eq(users.created, TimeS), 
-    eq(users.uid, LID())
+    eq(users.uid, lid)
 ));
 ```
 

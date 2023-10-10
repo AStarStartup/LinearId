@@ -12,7 +12,19 @@ The LSB word is a cryptographically-secure randomly generated 64-bit number that
 npm install linearid
 ```
 
-**2.** Add to your Drizzle ORM schema:
+**2.** Set compiler options:
+
+```JSON
+{
+  "compilerOptions": {
+    "target": "es2020",
+    //...
+  }
+  //...
+}
+```
+
+**3.** Add to your Drizzle ORM schema:
 
 ```TypeScript
 import { datetime, mysqlTable, varbinary } from "drizzle-orm/mysql-core";
@@ -25,7 +37,7 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 });
 ```
 
-**3.** Add to your code:
+**4.** Add to your code:
 
 ```TypeScript
 const { LIDNext, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
@@ -34,8 +46,8 @@ const { LIDNext, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
 const Example = LIDPrint(msb, lsb);
 console.log('\nExample LID hex string:0x' + Example);
 [lsb2, msb2] = LIDParse(Example);
-let lid = LEDNextBuffer();
 
+let lid = LIDNextBuffer();
 const TimeS = LIDSeconds(msb);
 
 let results = await db.select().from(UserAccounts).where(
