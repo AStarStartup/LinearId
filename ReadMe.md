@@ -55,8 +55,7 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 **4.** Add to your code:
 
 ```TypeScript
-const { LIDFromHex, LIDNext, LIDNextBuffer, LIDPrint, LIDToHex, LIDXOR
-} = require("linearid");
+const { LIDFromHex, LIDNext, LIDNextBuffer, LIDToHex } from "linearid";
 
 [lsb, msb] = LIDNext();
 const lid_hex_string = LIDToHex(msb, lsb);
