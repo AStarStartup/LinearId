@@ -3,17 +3,32 @@
 
 const crypto = require('crypto');
 
+// The number of bits in the LID MSb seconds timestamp.
+export const LIDSecondsBitCount = 36n;
+
 // The number of bits to use for the spin ticker.
-let SpinTickerBitCount: bigint = 22n;
+export const TickerBitCount: bigint = 22n;
 
-// The number of bits to use for the spin-ticker MSb offset.
-let SpinTickerMSbOffsetBits = 7n;
+// The number of cryptographically-secure random numbers in the source id.
+export const LIDSourceBitCount = 70n;
 
-// The 
-let SpinTickerMax = (1n << (SpinTickerBitCount - SpinTickerMSbOffsetBits)) - 1n;
+// Number of bits in the MSW of the source.
+export const SourceMSWBitCount = LIDSourceBitCount - 64n;
+
+// The number of bits in the Source and ticker.
+export const LIDSourceTickerBitCount = LIDSourceBitCount + TickerBitCount;
+
+// The maximum value of this spin ticker.
+export const  SpinTickerMax = (1n << TickerBitCount) - 1n;
+
+
+// Gets the current time in seconds.
+export function TimeSecondsAsBigInt(): bigint {
+  return BigInt(new Date().getTime()) / 1000n
+}
 
 // The last time a LID was created.
-let time_last: bigint = BigInt(new Date().getTime());
+let time_last: bigint = TimeSecondsAsBigInt();
 
 // The current number of times that LIDNextMSW has been called this millisecond.
 let ticker: bigint = 0n;
@@ -22,37 +37,41 @@ let ticker: bigint = 0n;
 and 64-bit server ID. */
 export type LID = [bigint, bigint];
 
-/* Generates a cryptographically secure bigint. */
-export function RandomBigIntPlus24Bits(): [bigint, bigint] {
-  let a = BigInt(crypto.randomInt(1, 0xffffffffffff));
-  let b = BigInt(crypto.randomInt(1, 0xffffffffffff));
-  let c = (a & 0xffffffffn) | ((b & 0xffffffffn) << 32n);
-  let d = (a >> 32n) | ((b >> 32n) << 12n);
-  let mask = (1n << SpinTickerMSbOffsetBits) - 1n;
-  return [c, (d & mask) << SpinTickerMSbOffsetBits];
+// Generates a cryptographically secure bigint.
+export function LIDSourceNext(): [bigint, bigint] {
+  const LSW = BigInt(crypto.randomInt(0, 0xffffffff));
+  const MSB = BigInt(crypto.randomInt(0, 0xfffffffff3));
+  return [LSW | ((MSB & 0xffffffffn) << 32n), MSB >> 32n];
 }
 
-/* Generates a cryptographically secure bigint. */
+// Generates a cryptographically secure bigint.
 export function RandomBigInt(): bigint {
-  let [rnd, rem] = RandomBigIntPlus24Bits();
-  return rnd;
+  return BigInt(crypto.randomInt(1, 0xffffffff)) | 
+         BigInt(crypto.randomInt(1, 0xffffffff)) << 32n;
 }
 
-export const [LIDSource, TickerOffset] = RandomBigIntPlus24Bits();
+let [lid_source_lsw, lid_source_msw] = LIDSourceNext();
 
-/* XORs the LSW and MSW. */
+// Increments the lid_source.
+export function LEDSourceIncrement() {
+  if(~lid_source_lsw == 1n)//0xfffffffffffffffen
+    ++lid_source_msw;
+  ++lid_source_lsw;
+}
+
+// XORs the LSW and MSW.
 export function LIDXOR(lid: LID): bigint {
   return lid[0] ^ lid[1];
 }
 
-/* Converts a bigint to a 2-byte hex string. */
+// Converts a bigint to a 2-byte hex string.
 export function NumberByteToHex(value: number, dest: string = ''): string {
   let hex = value.toString(16);
-  if(value < 16) return '0' + hex;
-  return hex;
+  if(value < 16) return dest + '0' + hex;
+  return dest + hex;
 }
 
-/* Converts a number to a 2-byte hex string. */
+// Converts a number to a 2-byte hex string.
 export function BigIntByteToHex(value: bigint, dest: string = ''): string {
   if(value < 0n || value > 255n) return dest;
   let hex = value.toString(16);
@@ -60,13 +79,13 @@ export function BigIntByteToHex(value: bigint, dest: string = ''): string {
   return hex;
 }
 
-/* Converts a hex character string to a byte as a number. */
+// Converts a hex character string to a byte as a number.
 export function ByteToHex(input: bigint, dest: string = ''): string {
   if(input < 0n || input > 15n) return dest;
   return BigIntByteToHex(input & 0xfn) + BigIntByteToHex((input >> 4n) & 0xfn);
 }
 
-/* Converts a hex character string to a byte as a number. */
+// Converts a hex character string to a byte as a number.
 export function HexToByte(input: string, index: number): number {
   let a = HexToBigInt(input[index]);
   let b = HexToBigInt(input[index + 1]);
@@ -79,28 +98,29 @@ export function HexToByte(input: string, index: number): number {
 and a spin counter.
 Bit Pattern: `[ `42-bits Microsecond Timestamp | 22-bits spin counter ] */
 export function LIDNextMSW(): bigint {
-  let time_now = BigInt(new Date().getTime());
+  let time_now = TimeSecondsAsBigInt();
   if (time_now != time_last) {
     time_last = time_now;
     ticker = 0n;
   }
-  while (ticker >= 1n << SpinTickerBitCount) {
-    time_now = BigInt(new Date().getTime());
+  while (ticker >= 1n << TickerBitCount) {
+    time_now = TimeSecondsAsBigInt();
     if (time_now != time_last) {
       time_last = time_now;
       ticker = 0n;
     }
   }
-  return (time_now << SpinTickerBitCount) | ticker++;
+  return (time_now << (TickerBitCount + SourceMSWBitCount)) | 
+         (ticker++ << SourceMSWBitCount) | lid_source_msw;
 }
 
 /* Generates the next LID as an array of two bigint.
-@return [LIDNextMSW(), LIDSource]. */
+@return [LIDNextMSW(), lid_source_lsw]. */
 export function LIDNext(): LID {
-  return [LIDSource, LIDNextMSW()];
+  return [lid_source_lsw, LIDNextMSW()];
 }
 
-/* Prints the Linear Id to the dest string. */
+// Prints the Linear Id to the dest string.
 export function LIDToHex(lid: LID, dest: string = ''): string {
   const [LSW, MSW] = lid;
   let shift = 56n;
@@ -119,15 +139,15 @@ export function LIDToHex(lid: LID, dest: string = ''): string {
   return dest;
 }
 
-/* Generates the next LID as a string or prints it to the dest. */
+// Generates the next LID as a string or prints it to the dest.
 export function LIDNextHex(dest: string = ''): string {
   return LIDToHex(LIDNext (), dest);
 }
 
 /* Generates the next LID as a Buffer.
-@return A Buffer containing [LIDSource, LIDNextMSW()]. */
+@return A Buffer containing [lid_source_lsw, LIDNextMSW()]. */
 export function LIDNextBuffer(lid: LID | undefined = undefined) {
-  const [LSW, MSW] = (lid == undefined) ? [LIDSource, LIDNextMSW()] 
+  const [LSW, MSW] = (lid == undefined) ? [lid_source_lsw, LIDNextMSW()] 
                                         : [lid[0], lid[1]];
   const Buf = Buffer.alloc(16);
   for (let index = 0; index < 8; index++) {
@@ -138,8 +158,8 @@ export function LIDNextBuffer(lid: LID | undefined = undefined) {
   return Buf;
 }
 
-/* Converts a LID in a buffer to a LID. */
-export function LIDFromBuffer(buf: Buffer) {
+// Converts a LID in a buffer to a LID.
+export function LIDFromBuffer(buf: Buffer): LID {
   if(buf == undefined)return [0n, 0n];
   if(buf.length != 16) return [0n, 0n];
   let LSW = 0n;
@@ -155,8 +175,8 @@ export function LIDFromBuffer(buf: Buffer) {
   return [LSW, MSW];
 }
 
-/* Extracts the LSW from the LID. */
-export function LIDBufferLSW(lid: Buffer) {
+// Extracts the LSW from the LID.
+export function LIDBufferLSW(lid: Buffer): bigint {
   let word = 0n;
   for(let index = 0; index < 8;) {
     let b = lid[index];
@@ -166,8 +186,8 @@ export function LIDBufferLSW(lid: Buffer) {
   return word;
 }
 
-/* Extracts the MSW from the LID. */
-export function LIDBufferMSW(lid: Buffer) {
+// Extracts the MSW from the LID.
+export function LIDBufferMSW(lid: Buffer): bigint {
   let word = 0n;
   for(let index = 0; index < 8;) {
     let b = lid[index + 8];
@@ -177,17 +197,33 @@ export function LIDBufferMSW(lid: Buffer) {
   return word;
 }
 
-/* Extracts the milliseconds timestamp. */
-export function LIDMilliseconds(msw: bigint): number {
-  return Number(msw >> SpinTickerBitCount);
+// Extracts the seconds timestamp from the lid MSW.
+export function LIDMSWSeconds(msw: bigint): bigint {
+  return msw >> LIDSourceTickerBitCount;
 }
 
-/* Extracts the seconds timestamp. */
-export function LIDSeconds(msw: bigint): number {
-  return LIDMilliseconds(msw) / 1000;
+// Extracts the seconds timestamp from the lid.
+export function LIDSeconds(lid: LID): bigint {
+  let w = lid[1];
+  if(w == undefined) return -1n;
+  return w >> LIDSourceTickerBitCount;
 }
 
-/* Converts a hex character string to a bigint. */
+// Extracts the seconds timestamp from the lid hex string.
+export function LIDBufferSeconds(hex: string): bigint {
+  const [LSW, MSW] = LIDFromHex(hex);
+  if(LSW == 0n) return -1n;
+  return LIDSeconds([LSW, MSW]);
+}
+
+// Extracts the seconds timestamp from the lid Buffer.
+export function LIDHexSeconds(buf: Buffer): bigint {
+  const [LSW, MSW] = LIDFromBuffer(buf);
+  if(LSW == 0n) return -1n;
+  return LIDSeconds([LSW, MSW]);
+}
+
+// Converts a hex character string to a bigint.
 export function HexToBigInt(hex: string | undefined): bigint {
   if (hex == undefined) return -1n;
   let c = hex.charCodeAt(0);
@@ -222,7 +258,7 @@ export function LIDFromHex(input: string): LID {
   return [lsw, msw];
 }
 
-/* Converts LID Buffer to a hex string. */
+// Converts LID Buffer to a hex string.
 export function LIDBufferToHex(lid: Buffer, dest: string = ''): string {
   if(lid == undefined || lid.length != 16) return dest + 'ERROR';
   let result = '';
@@ -235,7 +271,7 @@ export function LIDBufferToHex(lid: Buffer, dest: string = ''): string {
   return dest + result;
 }
 
-/* Converts a LID hex string to a Buffer. */
+// Converts a LID hex string to a Buffer.
 export function LIDBufferFromHex(input: string): Buffer | undefined {
   let buf = Buffer.alloc(16);
   if(input == undefined || input.length < 32) return undefined;

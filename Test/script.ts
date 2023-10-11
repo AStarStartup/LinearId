@@ -52,43 +52,38 @@ LIDTests(test_number).map((lid, index) => {
   console.log(index + '.) ' + lid + "  0b'" + lid.toString(2));
 });
 let [lsw_i, msw_i] = LIDNext();
-console.assert(lsw_i == LIDSource, "lsw_i not equal to LIDSource!");
-console.log('\n\nBefore:\n');
-console.log('MSW:0x' + msw_i.toString(16) + "  0b'" + msw_i.toString(2));
-console.log('LSW:0x' + lsw_i.toString(16) + "  0b'" + lsw_i.toString(2));
-
 let hex = LIDToHex([lsw_i, msw_i]);
-console.log('\nLID Hex:0x' + hex + '     length:' + hex.length);
 let [lsw_p, msw_p] = LIDFromHex(hex);
-console.assert(lsw_p == LIDSource, "lsw_p not equal to LIDSource1!");
+LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::A');
 console.log('Scanning LID Hex...\n\n');
 console.log('MSB:0x' + msw_p.toString(16) + "  0b'" + msw_p.toString(2));
 console.log('LSW:0x' + lsw_p.toString(16) + "  0b'" + lsw_p.toString(2));
-LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::A');
+console.log('0x' + hex);
+LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::B');
 
 let buf = LIDNextBuffer([lsw_i, msw_i]);
 [lsw_p, msw_p] = LIDFromBuffer(buf);
-LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::B');
+LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::C');
 
 buf = LIDBufferFromHex(hex);
 console.assert(buf != undefined, '{buf = LIDBufferFromHex(hex)} is undefined!');
 [lsw_p, msw_p] = LIDFromBuffer(buf);
-LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::C');
+LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::D');
 
-for (let i = 0; i < 1000000; ++i) {
+for (let i = 0; i < 1000000; ++i) { // 1000000
   msw_i = RandomBigInt();
   lsw_i = RandomBigInt();
   hex = LIDToHex([lsw_i, msw_i]);
   [lsw_p, msw_p] = LIDFromHex(hex);
-  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::D');
+  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::E');
 
   buf = LIDNextBuffer([lsw_i, msw_i]);
   [lsw_p, msw_p] = LIDFromBuffer(buf);
-  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::E');
+  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::F');
 
   buf = LIDBufferFromHex(hex);
   [lsw_p, msw_p] = LIDFromBuffer(buf);
-  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::F');
+  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::G');
 }
 
 
