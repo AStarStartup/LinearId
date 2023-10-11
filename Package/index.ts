@@ -3,18 +3,47 @@
 
 const crypto = require('crypto');
 
+// The number of bits to use for the spin ticker.
+let SpinTickerBitCount: bigint = 22n;
+
+// The number of bits to use for the spin-ticker MSb offset.
+let SpinTickerMSbOffsetBits = 7n;
+
+// The 
+let SpinTickerMax = (1n << (SpinTickerBitCount - SpinTickerMSbOffsetBits)) - 1n;
+
 // The last time a LID was created.
 let time_last: bigint = BigInt(new Date().getTime());
 
 // The current number of times that LIDNextMSW has been called this millisecond.
 let ticker: bigint = 0n;
 
-// The number of bits to use for the spin ticker.
-let SpinTickerBitCount: bigint = 22n;
-
 /* A Linear ID with 42-bit MSb millisecond ticker, 22-bit sub-ms spin ticker,
 and 64-bit server ID. */
 export type LID = [bigint, bigint];
+
+/* Generates a cryptographically secure bigint. */
+export function RandomBigIntPlus24Bits(): [bigint, bigint] {
+  let a = BigInt(crypto.randomInt(1, 0xffffffffffff));
+  let b = BigInt(crypto.randomInt(1, 0xffffffffffff));
+  let c = (a & 0xffffffffn) | ((b & 0xffffffffn) << 32n);
+  let d = (a >> 32n) | ((b >> 32n) << 12n);
+  let mask = (1n << SpinTickerMSbOffsetBits) - 1n;
+  return [c, (d & mask) << SpinTickerMSbOffsetBits];
+}
+
+/* Generates a cryptographically secure bigint. */
+export function RandomBigInt(): bigint {
+  let [rnd, rem] = RandomBigIntPlus24Bits();
+  return rnd;
+}
+
+export const [LIDSource, TickerOffset] = RandomBigIntPlus24Bits();
+
+/* XORs the LSW and MSW. */
+export function LIDXOR(lid: LID): bigint {
+  return lid[0] ^ lid[1];
+}
 
 /* Converts a bigint to a 2-byte hex string. */
 export function NumberByteToHex(value: number, dest: string = ''): string {
@@ -27,7 +56,7 @@ export function NumberByteToHex(value: number, dest: string = ''): string {
 export function BigIntByteToHex(value: bigint, dest: string = ''): string {
   if(value < 0n || value > 255n) return dest;
   let hex = value.toString(16);
-  if(value < 16n) return '0' + hex;
+  if(hex.length == 1) return '0' + hex;
   return hex;
 }
 
@@ -64,14 +93,6 @@ export function LIDNextMSW(): bigint {
   }
   return (time_now << SpinTickerBitCount) | ticker++;
 }
-
-/* Generates a cryptographically secure bigint. */
-export function RandomBigInt(): bigint {
-  return BigInt(crypto.randomInt(1, 0xffffffff)) | 
-                (BigInt(crypto.randomInt(1, 0xffffffff)) << 32n);
-}
-
-export const LIDSource: bigint = RandomBigInt();
 
 /* Generates the next LID as an array of two bigint.
 @return [LIDNextMSW(), LIDSource]. */

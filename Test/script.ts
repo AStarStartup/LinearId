@@ -31,6 +31,21 @@ function LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, tag) {
                 tag);
 }
 
+console.log("\n\nTesting linearid");
+
+let date = new Date();
+let now = date.getTime();
+let now_seconds = Math.floor(now / 1000);
+let now_binary = now.toString(2);
+let now_seconds_binary = now_seconds.toString(2);
+console.log('now(milliseconds):' + now);
+console.log("0b'" + now_binary + ':' + now_binary.length);
+console.log('now(seconds):' + now_seconds);
+console.log("0b'" + now_seconds_binary + ':' + now_seconds_binary.length);
+let years_since_epoch = Math.floor(now/(365.25*24*60*60*1000));
+console.log('Epoch year: ' + (date.getFullYear() - years_since_epoch) + 
+            '\n\n');
+
 let test_number = 10;
 console.log('Printing ' + test_number + ' test LIDs');
 LIDTests(test_number).map((lid, index) => {

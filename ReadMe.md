@@ -1,8 +1,12 @@
-An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic). Another solution is to use [(ULID)(https://github.com/ulid/spec), but it uses an 80-byte random number in the LSB and millisecond timestamp in the MSB, and that uses a lot of CPU. We want an approach that doesn't have to generate any random numbers at runtime.
+An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic).
 
-LinearId (LID) works using two 64-bit words where where the first MSB word is a microsecond ticker bit shifted up 22 bits and ORed with a 22-bit spin ticker. The current microsecond time is stored and each time a new LID is created it checks if it's the next millisecond and if it is then  it resets the ticker, else it increments the spin ticker. This limits you to a total of 4194304 calls to LID() per millisecond, at which time the system will spin wait until the next millisecond, but this is never expected to actually happen in real life except in some rare edge cases.
+Another solution is to use [(ULID)(https://github.com/ulid/spec), but it uses an 80-byte random number in the LSB and millisecond timestamp in the MSB, and that uses a lot of CPU. We want an approach that doesn't have to generate any random numbers at runtime.
 
-The LSB word is a cryptographically-secure randomly generated 64-bit number that gets generated upon boot. This allows your servers to name new database entries on one server and when they submit new database entries they will be mostly sorted by the millisecond of the request generation. SQL table data is theoretically unordered and we only have second timestamps, so the fastest way to search through table rows is to look for the date. Because the LID stores a millisecond timestamp, we can quickly extract the seconds timestamp to use to search through the SQL database by date and uid.
+LinearId (LID) works using two 64-bit words where where the first MSB word is a microsecond ticker bit shifted up 22 bits and ORed with a 22-bit spin ticker. The current microsecond time is stored and each time a new LID is created it checks if it's the next millisecond and if it is then it resets the ticker, else it increments the spin ticker. This limits you to a total of 4194304 calls to LID() per millisecond theoretically, at which time the system will spin wait until the next millisecond, but in order to decrease the chance of a collision in the 64-bit LSB, a 21-bit randomly generated number is used as an offset to the spin ticker.
+
+The LSB word is a cryptographically-secure randomly generated 64-bit number that gets generated upon boot. This allows your servers to name new database entries on one server and when they submit new database entries they will be mostly sorted by the millisecond of the request generation.
+
+To [optimize for SQL and other database searches](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide), we need to take advantage of the 64-bit value in the inode data structure used by all in-disk database engines. It's very complicated and you can index your database tables different ways at runtime to optimize your lookups.
 
 ## Quickstart
 
@@ -40,21 +44,20 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 **4.** Add to your code:
 
 ```TypeScript
-const { LIDNext, LIDPrint, LIDParse, LIDSeconds } = require("linearid");
+const { LIDFromHex, LIDNext, LIDNextBuffer, LIDPrint, LIDToHex, LIDSeconds 
+} = require("linearid");
 
 [lsb, msb] = LIDNext();
-const Example = LIDPrint(msb, lsb);
-console.log('\nExample LID hex string:0x' + Example);
-[lsb2, msb2] = LIDParse(Example);
+const lid_hex_string = LIDToHex(msb, lsb);
+console.log('\nExample LID hex string:0x' + lid_hex_string);
+[lsb2, msb2] = LIDFromHex(lid_hex_string);
 
 let lid = LIDNextBuffer();
 const TimeS = LIDSeconds(msb);
 
 let results = await db.select().from(UserAccounts).where(
-  and(
-    eq(users.created, TimeS), 
-    eq(users.uid, lid)
-));
+  eq(users.uid, lid)
+);
 ```
 
 ## License
