@@ -1,4 +1,6 @@
-An npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic), which make it not good for doing binary searches with.
+LinearId is an npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. Please read [this ReadMe file on GitHub](https://github.com/AStarStartup/LinearId) for the latest updates, where you can also contribute code, bug reports, feature requests, documentation improvements, etc.
+
+PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic), which make it not good for doing binary searches with.
 
 Another solution is to use [Universally Unique Lexicographically Sortable Identifier (ULID)](https://github.com/ulid/spec), but it uses a 48-bit millisecond timestamp MSB and 80-byte random number in the LSB. There are two problems with this design approach. First is that the x86 CPU doesn't have a sub-second timestamp, so databases do not use them. This means that to translate the milliseconds to seconds when you want to work with the database and you will have to divide and multiple by 1000, which is slow and error prone. To get a sub-second timestamp on an x86 server will require a dedicated thread to do a spin clock with an inter-process pipe, which is complex and unnecessary. We want an approach that doesn't have to generate any random numbers at runtime and we work in seconds and it will work for almost everything for thousands of years.
 
@@ -110,16 +112,15 @@ let results = await db.select().from(UserAccounts).where(
   and(
     and(
       gte(users.date_created, Timestamp),
-      lte(users.date_created, Timestamp)
+      lte(users.date_created, Timestamp + 2)
     ),
     eq(users.uid, uid)
   )
 );
 
-let results = await db.select().from(UserAccounts).where(
-  and(
-    eq(users.uidx, uidx)
-  )
+// When you have converted the LID 
+results = await db.select().from(UserAccounts).where(
+  eq(users.uidx, uidx)
 );
 ```
 
