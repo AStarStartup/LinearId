@@ -1,8 +1,6 @@
 // Copyright AStartup. MIT License. You can find a copy of the license at 
 // http://github.com/AStarStartup/LinearId
 
-const crypto = require('crypto');
-
 // The number of bits in the LID MSb seconds timestamp.
 export const LIDSecondsBitCount = 36n;
 
@@ -21,6 +19,14 @@ export const LIDSourceTickerBitCount = LIDSourceBitCount + TickerBitCount;
 // The maximum value of this spin ticker.
 export const  SpinTickerMax = (1n << TickerBitCount) - 1n;
 
+// Cryptographically-secure Random Number Generator function.
+type CSRNG = (min: number, max: number) => number;
+
+// Generates a cryptographically secure bigint.
+export function RandomBigInt(crypto_rnd_int: CSRNG): bigint {
+  return BigInt(crypto_rnd_int(1, 0xffffffff)) | 
+         BigInt(crypto_rnd_int(1, 0xffffffff)) << 32n;
+}
 
 // Gets the current time in seconds.
 export function TimeSecondsAsBigInt(): bigint {
@@ -37,24 +43,22 @@ let ticker: bigint = 0n;
 and 64-bit server ID. */
 export type LID = [bigint, bigint];
 
-// Generates a cryptographically secure bigint.
-export function LIDSourceNext(): [bigint, bigint] {
-  const LSW = BigInt(crypto.randomInt(0, 0xffffffff));
-  const MSB = BigInt(crypto.randomInt(0, 0xfffffffff3));
+// Generates a cryptographically secure random source id.
+export function LIDSourceNext(crypto_rnd_int: CSRNG): [bigint, bigint] {
+  const LSW = BigInt(crypto_rnd_int(0, 0xffffffff));
+  const MSB = BigInt(crypto_rnd_int(0, 0xfffffffff3));
   return [LSW | ((MSB & 0xffffffffn) << 32n), MSB >> 32n];
 }
 
-// Generates a cryptographically secure bigint.
-export function RandomBigInt(): bigint {
-  return BigInt(crypto.randomInt(1, 0xffffffff)) | 
-         BigInt(crypto.randomInt(1, 0xffffffff)) << 32n;
-}
+// The Source Id Least-Significant Word.
+let lid_source_lsw = 0n;
 
-let [lid_source_lsw, lid_source_msw] = LIDSourceNext();
+// The Source Id Most-Significant Word.
+let lid_source_msw = 0n;
 
 // Increments the lid_source.
 export function LEDSourceIncrement() {
-  if(~lid_source_lsw == 1n)//0xfffffffffffffffen
+  if(~lid_source_lsw == 1n)//0xfffffffffffffffe
     ++lid_source_msw;
   ++lid_source_lsw;
 }
@@ -116,7 +120,11 @@ export function LIDNextMSW(): bigint {
 
 /* Generates the next LID as an array of two bigint.
 @return [LIDNextMSW(), lid_source_lsw]. */
-export function LIDNext(): LID {
+export function LIDNext(crypto_rnd_int: CSRNG): LID {
+  let lid_src_lsw = lid_source_lsw;
+  if(lid_src_lsw == 0n) {
+    LIDSourceNext(crypto_rnd_int);
+  }
   return [lid_source_lsw, LIDNextMSW()];
 }
 
@@ -140,8 +148,8 @@ export function LIDToHex(lid: LID, dest: string = ''): string {
 }
 
 // Generates the next LID as a string or prints it to the dest.
-export function LIDNextHex(dest: string = ''): string {
-  return LIDToHex(LIDNext (), dest);
+export function LIDNextHex(crypto_rnd_int: CSRNG, dest: string = ''): string {
+  return LIDToHex(LIDNext (crypto_rnd_int), dest);
 }
 
 /* Generates the next LID as a Buffer.

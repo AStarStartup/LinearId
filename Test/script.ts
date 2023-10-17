@@ -1,6 +1,7 @@
-const { LIDBufferFromHex, LIDBufferToHex, LIDFromBuffer, LIDNext, 
-  LIDNextBuffer, LIDNextMSW, LIDFromHex, LIDToHex, LIDSource, RandomBigInt
-} = require("linearid");
+const { LIDBufferFromHex, LIDFromBuffer, LIDNext, LIDNextBuffer, LIDNextMSW,
+  LIDFromHex, LIDToHex, RandomBigInt } = require('linearid');
+
+const { randomInt } = require('crypto');
 
 /* @todo I don't want to create this in memory, i would rather do it on the
 fly. */
@@ -51,14 +52,14 @@ console.log('Printing ' + test_number + ' test LIDs');
 LIDTests(test_number).map((lid, index) => {
   console.log(index + '.) ' + lid + "  0b'" + lid.toString(2));
 });
-let [lsw_i, msw_i] = LIDNext();
+let [lsw_i, msw_i] = LIDNext(randomInt);
 let hex = LIDToHex([lsw_i, msw_i]);
 let [lsw_p, msw_p] = LIDFromHex(hex);
 LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::A');
 console.log('Scanning LID Hex...\n\n');
 console.log('MSB:0x' + msw_p.toString(16) + "  0b'" + msw_p.toString(2));
 console.log('LSW:0x' + lsw_p.toString(16) + "  0b'" + lsw_p.toString(2));
-console.log('0x' + hex);
+console.log('LID:0x' + hex);
 LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::B');
 
 let buf = LIDNextBuffer([lsw_i, msw_i]);
@@ -71,8 +72,8 @@ console.assert(buf != undefined, '{buf = LIDBufferFromHex(hex)} is undefined!');
 LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::D');
 
 for (let i = 0; i < 1000000; ++i) { // 1000000
-  msw_i = RandomBigInt();
-  lsw_i = RandomBigInt();
+  msw_i = RandomBigInt(randomInt);
+  lsw_i = RandomBigInt(randomInt);
   hex = LIDToHex([lsw_i, msw_i]);
   [lsw_p, msw_p] = LIDFromHex(hex);
   LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::E');
