@@ -1,7 +1,7 @@
-const { LIDBufferFromHex, LIDFromBuffer, LIDNext, LIDNextBuffer, LIDNextMSW,
-  LIDFromHex, LIDToHex, RandomBigInt } = require('linearid');
-
 const { randomInt } = require('crypto');
+const { LIDBufferFromHex, LIDFromBuffer, LIDToBuffer, LIDNext, LIDNextBuffer,
+  LIDNextMSW, LIDFromHex, LIDToHex, RandomBigInt
+} = require('linearid');
 
 /* @todo I don't want to create this in memory, i would rather do it on the
 fly. */
@@ -62,7 +62,7 @@ console.log('LSW:0x' + lsw_p.toString(16) + "  0b'" + lsw_p.toString(2));
 console.log('LID:0x' + hex);
 LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::B');
 
-let buf = LIDNextBuffer([lsw_i, msw_i]);
+let buf = LIDToBuffer([lsw_i, msw_i]);
 [lsw_p, msw_p] = LIDFromBuffer(buf);
 LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::C');
 
@@ -78,7 +78,7 @@ for (let i = 0; i < 1000000; ++i) { // 1000000
   [lsw_p, msw_p] = LIDFromHex(hex);
   LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::E');
 
-  buf = LIDNextBuffer([lsw_i, msw_i]);
+  buf = LIDToBuffer([lsw_i, msw_i]);
   [lsw_p, msw_p] = LIDFromBuffer(buf);
   LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::F');
 
@@ -86,6 +86,19 @@ for (let i = 0; i < 1000000; ++i) { // 1000000
   [lsw_p, msw_p] = LIDFromBuffer(buf);
   LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::G');
 }
+/*
+console.log("\nTesting historically problem children...");
 
+let lid_i = [ [0x653892d00000280n, 0x653892d000002c0n] ];
+
+for (let i = 0; i < lid_i.length; ++i) {
+  let [lsw_i, msw_i] = lid_i[i];
+  let buf = LIDNextBuffer([lsw_i, msw_i]);
+  [lsw_p, msw_p] = LIDFromBuffer(buf);
+  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::C');
+
+  let [lsw_p, msw_p] = LIDFromHex(lid);
+  asserts()
+}*/
 
 console.log("\n\nFinished running linearid tests.");
