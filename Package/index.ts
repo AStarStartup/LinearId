@@ -19,6 +19,9 @@ export const LIDSourceTickerBitCount = LIDSourceBitCount + TickerBitCount;
 // The maximum value of this spin ticker.
 export const  SpinTickerMax = (1n << TickerBitCount) - 1n;
 
+// The number of bits in the second or millisecond Local LID subsecond ticker.
+export const LLIDTimerBitCount = 32n;
+
 // Cryptographically-secure Random Number Generator function.
 type CSRNG = (min: number, max: number) => number;
 
@@ -27,6 +30,18 @@ export type LID128 = [bigint, bigint];
 
 /* A 64-bit Linear ID. */
 export type LID64 = [bigint, bigint];
+
+// The current number of times that LIDNextMSW has been called this millisecond.
+let lid_ticker: bigint = 0n;
+
+// The last time a LID was created.
+let lid_time_last: bigint = TimeSecondsAsBigInt();
+
+// The 64-bit Local LID ticker count.
+let llid_ticker: bigint = 0n;
+
+// The last time in milliseconds
+let llid_time_last = new Date().getTime();
 
 // Generates a cryptographically secure bigint.
 export function RandomBigInt(crypto_rnd_int: CSRNG): bigint {
@@ -38,12 +53,6 @@ export function RandomBigInt(crypto_rnd_int: CSRNG): bigint {
 export function TimeSecondsAsBigInt(): bigint {
   return BigInt(new Date().getTime()) / 1000n
 }
-
-// The last time a LID was created.
-let time_last: bigint = TimeSecondsAsBigInt();
-
-// The current number of times that LIDNextMSW has been called this millisecond.
-let ticker: bigint = 0n;
 
 // Generates a cryptographically secure random source id.
 export function LIDSourceNext(crypto_rnd_int: CSRNG): [bigint, bigint] {
@@ -112,19 +121,19 @@ and a spin counter.
 Bit Pattern: `[ `42-bits Microsecond Timestamp | 22-bits spin counter ] */
 export function LIDNextMSW(): bigint {
   let time_now = TimeSecondsAsBigInt();
-  if (time_now != time_last) {
-    time_last = time_now;
-    ticker = 0n;
+  if (time_now != lid_time_last) {
+    lid_time_last = time_now;
+    lid_ticker = 0n;
   }
-  while (ticker >= 1n << TickerBitCount) {
+  while (lid_ticker >= 1n << TickerBitCount) {
     time_now = TimeSecondsAsBigInt();
-    if (time_now != time_last) {
-      time_last = time_now;
-      ticker = 0n;
+    if (time_now != lid_time_last) {
+      lid_time_last = time_now;
+      lid_ticker = 0n;
     }
   }
   return (time_now << (TickerBitCount + SourceMSWBitCount)) | 
-         (ticker++ << SourceMSWBitCount) | lid_source_msw;
+         (lid_ticker++ << SourceMSWBitCount) | lid_source_msw;
 }
 
 /* Generates the next LID as an array of two bigint.
@@ -314,4 +323,31 @@ export function LIDBufferFromHex(input: string): Buffer | undefined {
     buf[index + 8] = c;
   }
   return buf;
+}
+
+// Generates the next Local LID.
+export function LLIDNext(): bigint {
+  let time_start = new Date().getTime();
+  let time_last = llid_time_last;
+  let ticker = llid_ticker;
+  let invalid_tick_count = 1n << (64n - LLIDTimerBitCount);
+  if(time_start != time_last) {
+    llid_ticker = 0n;
+    llid_time_last = time_start;
+  } else {
+    if (ticker >= invalid_tick_count) {
+      let now = new Date().getTime();
+      while(now == time_last) now = new Date().getTime();
+      time_start = now;
+      llid_ticker = 0n;
+    } else {
+      llid_ticker = ticker + 1n;
+    }
+  }
+  return (BigInt(time_start & 0xffffffff) << LLIDTimerBitCount) | ticker;
+}
+
+// Generates the next Local LID hex string.
+export function LLIDNextString(): string {
+  return LLIDNext().toString(16);
 }

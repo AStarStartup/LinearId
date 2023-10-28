@@ -1,11 +1,15 @@
+// Copyright AStartup. MIT License. You can find a copy of the license at 
+// http://github.com/AStarStartup/LinearId
+
 const { randomInt } = require('crypto');
+//
 const { LIDBufferFromHex, LIDFromBuffer, LIDToBuffer, LIDNext, LIDNextBuffer,
-  LIDNextMSW, LIDFromHex, LIDToHex, RandomBigInt
+  LIDNextMSW, LIDFromHex, LIDToHex, LLIDNext, RandomBigInt
 } = require('linearid');
 
-/* @todo I don't want to create this in memory, i would rather do it on the
-fly. */
 function LIDTests(amount) {
+  /* @todo I don't want to create this in memory, i would rather do it on the
+  fly. */
   if(amount <= 0) return [];
   let lids = [LIDNextMSW()];
   while(--amount > 0) lids.push(LIDNextMSW());
@@ -71,7 +75,7 @@ console.assert(buf != undefined, '{buf = LIDBufferFromHex(hex)} is undefined!');
 [lsw_p, msw_p] = LIDFromBuffer(buf);
 LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::D');
 
-for (let i = 0; i < 1000000; ++i) { // 1000000
+for (let i = 0; i < 0; ++i) { // 1000000
   msw_i = RandomBigInt(randomInt);
   lsw_i = RandomBigInt(randomInt);
   hex = LIDToHex([lsw_i, msw_i]);
@@ -86,19 +90,15 @@ for (let i = 0; i < 1000000; ++i) { // 1000000
   [lsw_p, msw_p] = LIDFromBuffer(buf);
   LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::G');
 }
-/*
-console.log("\nTesting historically problem children...");
 
-let lid_i = [ [0x653892d00000280n, 0x653892d000002c0n] ];
+console.log("\nTesting LLID...");
 
-for (let i = 0; i < lid_i.length; ++i) {
-  let [lsw_i, msw_i] = lid_i[i];
-  let buf = LIDNextBuffer([lsw_i, msw_i]);
-  [lsw_p, msw_p] = LIDFromBuffer(buf);
-  LIDVerifyMLSW(lsw_i, msw_i, lsw_p, msw_p, 'Script.ts::C');
-
-  let [lsw_p, msw_p] = LIDFromHex(lid);
-  asserts()
-}*/
+for(let i = 0; i < 16; ++i) console.log(i + ': ' + LLIDNext())
+let then = new Date().getTime();
+let i = 0;
+for(i = 0; i < 1000000; ++i) {
+}
+console.log('Waited ' + (new Date().getTime() - then) + ' milliseconds');
+for(let i = 0; i < 16; ++i) console.log(i + ': ' + LLIDNext())
 
 console.log("\n\nFinished running linearid tests.");

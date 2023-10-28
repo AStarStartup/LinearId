@@ -124,6 +124,24 @@ results = await db.select().from(UserAccounts).where(
 );
 ```
 
+### 64-bit Local LIDS
+
+When rendering UI components on client and in many other situations you need to generate a UID, or a ref in React, without adding it to a database, so there is no need for a source id. JavaScript uses a millisecond timestamp natively, which when truncated to 32-bits provides an epoch of 49.7 days, which is much longer than the expected time that a webpage. It's not expected for users to need to generate 2^32 Local LID (LLID) per second, but it's nice and easy to just use either a 32-bit seconds timer or the lower 32-bits of a milliseconds timer in the Most Significant 32-bits ORed with a 32-bit sub-timer ticker; sub-timer meaning either sub-second or sub-millisecond.
+
+```TypeScript
+import { LLIDNextString } from 'linearid';
+
+const ExampleItems = [ 'Foo', 'Bar' ]
+
+export function ExampleList() {
+  return <ul>
+    return ExampleItems.map((item) => {
+      return <li ref={LLIDNextString()}>{item}</li>
+    })
+  <ul>
+}
+```
+
 ## License
 
 Copyright [AStartup](https://astartup.net).
