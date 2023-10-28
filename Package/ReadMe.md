@@ -134,10 +134,9 @@ import { LLIDNextString } from 'linearid';
 const ExampleItems = [ 'Foo', 'Bar' ]
 
 export function ExampleList() {
-  return <ul>
-    return ExampleItems.map((item) => {
+  return <ul> { ExampleItems?.map((item) => {
       return <li ref={LLIDNextString()}>{item}</li>
-    })
+    })}
   <ul>
 }
 ```
