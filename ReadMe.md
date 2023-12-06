@@ -1,19 +1,32 @@
-LinearId is an npm package for generating 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. Please read [this ReadMe file on GitHub](https://github.com/AStarStartup/LinearId) for the latest updates, where you can also contribute code, bug reports, feature requests, documentation improvements, etc.
 
-PlanetScale automatically shards the database to scale to more users, and when that the database is copied the autoincrement primary key isn't valid anymore. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonic), which make it not good for doing binary searches with.
+LinearId is an npm package for generating 64-bit and 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. Please read [this ReadMe file on GitHub](https://github.com/AStarStartup/LinearId) for the latest updates, where you can also contribute code, bug reports, feature requests, documentation improvements, etc.
+
+## 2023/12/5: Temporarily Broken to Implement GitHub Actions
+
+I am preparing to release the new v0.2.0 version of LinearId with the 64-bit LID8 and 128-bit LID16 format, this isn't actually v0.2.0, but it's close to it and I have too much work to risk losing. The main branch of this repo is possibly broken because I have a new Jest unit test but it shouldn't take long; sorry, it should work but I have not tested that. I'm not the best with GitHub and I'm configuring the GitHub Actions to auto-run the new Jest unit test when I make a pull request. I have no clue how long it will take to fix the rest of the tests, they were working before but I restructured everything to make it DRY to easier to test bit ranges.
+
+## Volunteers Needed
+
+We need so people to help test LinearId to ensure everything is working properly, to use LinearId with the popular database engines, and contribute to the unit tests to get optimal test coverage.
+
+I can't figure out how to configure the NPM package so we can use the import syntax, you have to use const require syntax for now. I can use some help on #11. Thanks.
+
+## Solution
+
+When your website grows to a large number of users, you need to shard the database and use multiple SQL servers. When that the database is copied the autoincrement primary key isn't valid anymore. PlanetScale automatically shards the database to scale to more users, so this is why there are no foreign keys with PlanetScale. While you might be tempted to use UUID, it does not generate values that always increase (i.e. monotonically increasing), which is not good for doing binary searches with. Binary searches require monotonically increasing search indexes, and the SQL database engine uses the inode structure in your data drives to search for SQL table rows.
 
 Another solution is to use [Universally Unique Lexicographically Sortable Identifier (ULID)](https://github.com/ulid/spec), but it uses a 48-bit millisecond timestamp MSB and 80-byte random number in the LSB. There are two problems with this design approach. First is that the x86 CPU doesn't have a sub-second timestamp, so databases do not use them. This means that to translate the milliseconds to seconds when you want to work with the database and you will have to divide and multiple by 1000, which is slow and error prone. To get a sub-second timestamp on an x86 server will require a dedicated thread to do a spin clock with an inter-process pipe, which is complex and unnecessary. We want an approach that doesn't have to generate any random numbers at runtime and we work in seconds and it will work for almost everything for thousands of years.
 
-LinearId (LID) uses a 128-bit uid where the Most-Significant Bits (MSB) are a 36-bit Unix second timestamp followed by a 22-bit sub-second spin ticker and 70-bit Cryptographically-Secure Generated-Upon-Boot Random Number (CSGUBRN):
+128-bit LinearId (LID16) use a 36-bit Unix second timestamp in the Most-Significant Bits (MSB) followed by a 22-bit sub-second spin ticker and 73-bit Cryptographically-Secure Generated-Upon-Boot Random Number (CSGUBRN):
 
 ```AsciiArt
  v--MSb                        128-bit LID                           LSb--v
 +---------------------------------------------------------------------------+
-| 36-bit seconds timestamp | 22-bit sub-second spin ticker | 70-bit CSGUBRN |
+| 33-bit seconds timestamp | 22-bit sub-second spin ticker | 73-bit CSGUBRN |
 +---------------------------------------------------------------------------+
 ```
 
-Statistically this means that when you have two web servers active, the probability that both servers generate the same random number is 7.12e-41%. If you had 1,000 servers running then the probability would be 8.47e-17%, which is a 1 in 118,063,754,427,391 chance. If you had 1,000,000 servers running, the probability would be 8.47e-14%, which is a 1 in 1,180,591,620,717,411 chance, which is a 64-bit number. While this might not be enough for the most secure applications, this is good enough for almost all web apps.
+Statistically this means that when you have two web servers active, the probability that both servers generate the same random number is 7.12e-41%. If you had 1,000 servers running then the probability would be 1.06e-22%, which is a 1 in 9,444,732,965,739,290,427,392 chance. If you had 1,000,000 servers running, the probability would be 1.06e-16%, which is a 1 in 9,444,732,965,739,290 chance and is a 53-bit number. If there ever is actually is more than one server with the same source id, this means that the server will have to regenerate a 73-bit random source id upon boot, which will result in the first database write from that server to have to be performed one. This makes this bit pattern statistically acceptable to use for military and banking applications.
 
 The 22-bit sub-second spin ticker caps out the number of calls you can make to per second to 2^22, which is 4,194,304. If you make more calls than this per second than the algorithm will spin wait until the next second and then reset the sub-second ticker. Assuming the upper limit of a normal computer, which is no more than 4,294,967,296Hz (4.3GHz) and just so happens to be 2^32 or 32-bits, making the math easy. This would give you about 1024 instructions between when you can call LID. Given not all CPU instructions are single-cycle, you're usually waiting for memory, and you're going to be creating a data structure, it's highly unlikely you'll ever hit this cap and if you ever did you'll probably have no problem with the delay. This is an edge case.
 
@@ -65,13 +78,13 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 **4** Add to your TypeScript or JavaScript imports:
 
 ```TypeScript
-import { LIDFromHex, LIDNext, LIDNextBuffer, LIDToHex } from "linearid";
-import { randomInt } from 'crypto';
+//import { LIDFromHex, LIDNext, LIDNextBuffer, LIDToHex } from "linearid";
+//import { randomInt } from 'crypto';
 
 // or
 
-import { LIDFromHex, LIDNext, LIDNextBuffer, LIDToHex } from "linearid";
-import { randomInt } from 'crypto';
+const { randomInt } = require('crypto');
+const { LIDFromHex, LIDNext, LIDNextBuffer, LIDToHex } = require("linearid");
 ```
 
 **5** Generate LIDs (Drizzle example in TypeScript):
