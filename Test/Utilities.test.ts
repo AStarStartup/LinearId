@@ -3,8 +3,8 @@
 
 const { randomInt } = require('crypto');
 const { BigIntInBitRange, BigIntIsInBitRange, BigIntToBuffer, BigIntRandom,
-  BinaryPad, BufferToBigInt, CountBitsInByte, HexToBigInt, HexToBuffer, HexPad, 
-  NumberCountBits, NumberCountBytes
+  BinaryPad, BinaryPadBitCount, BufferToBigInt, CountBitsInByte, HexToBigInt, 
+  HexToBuffer, HexPadBitCount, NumberCountBits, NumberCountBytes
 } = require('linearid'); 
 
 import { expect, test } from '@jest/globals';
@@ -22,12 +22,12 @@ export function BigIntVerify(int_i: bigint, int_p: bigint, tag: string) {
   let o = '';
   if(int_i != int_p) {
     o = '\nError at ' + tag + 
-        '\nint_i: 0x' + HexPad(int_i) + 
-        '\nint_p: 0x' + HexPad(int_p) + 
-        '\ndiff : 0x' + HexPad((int_p ^ int_i)) + 
-        '\n\nint_i: 0b' + BinaryPad(int_i) + 
-        '\nint_p: 0b' + BinaryPad(int_p) + 
-        '\ndiff : 0b' + BinaryPad((int_p ^ int_i));
+        '\nint_i: ' + HexPadBitCount(int_i) + 
+        '\nint_p: ' + HexPadBitCount(int_p) + 
+        '\ndiff : ' + HexPadBitCount((int_p ^ int_i)) + '\n' +
+        '\nint_i: ' + BinaryPadBitCount(int_i) + 
+        '\nint_p: ' + BinaryPadBitCount(int_p) + 
+        '\ndiff : ' + BinaryPadBitCount((int_p ^ int_i));
     console.log(o);
   }
   expect(int_i == int_p).toBe(true); 
@@ -38,26 +38,26 @@ test("Utilities", () => {
   let j = 0;
   let o = '';
 
-  console.log('Testing CountBitsInByte');
+  //console.log('Testing CountBitsInByte');
   expect(CountBitsInByte(0)).toBe(0);
   for(j = 1; j <= 8; ++j)
     while(++i < 1 << j) expect(CountBitsInByte(i)).toBe(j);
 
-  console.log('Testing BigIntRandom...');
+  //console.log('Testing BigIntRandom...');
   for(i = 0; i < TestPrintCount; ++i) {
     const BitCount = 64;
-    const V = BigIntRandom(randomInt, BitCount);
-    if(V.toString(2).length > BitCount)
-      console.log('V: ' + V + ' 0b' + V.toString(2) + ':' + 
-                  V.toString(2).length + '\n');
-    const VPad = BinaryPad(V, BitCount);
-    if(VPad.length > BitCount)
-      console.log('VPad: 0b' + VPad + ':' + VPad.length + '\n');
-    expect(V.toString(2).length).toBeLessThanOrEqual(BitCount);
-    expect(VPad.length).toBeLessThanOrEqual(BitCount);
+    const STR = BigIntRandom(randomInt, BitCount);
+    if(STR.toString(2).length > BitCount)
+      console.log('STR: ' + STR + ' 0b' + STR.toString(2) + ':' + 
+                  STR.toString(2).length + '\n');
+    const STRPad = BinaryPad(STR, BitCount, '');
+    if(STRPad.length > BitCount)
+      console.log('STRPad: ' + STRPad + ':' + STRPad.length + '\n');
+    expect(STR.toString(2).length).toBeLessThanOrEqual(BitCount);
+    expect(STRPad.length).toBeLessThanOrEqual(BitCount);
   }
   
-  console.log('Testing BigIntInBitRange...');
+  //console.log('Testing BigIntInBitRange...');
   for(i = 1; i <= TestBitsUpTo; ++i) {
     for(j = 1; j <= 100; ++j) {
       //console.log('-------------------------------------------------------');
@@ -71,7 +71,7 @@ test("Utilities", () => {
     }
   }
   
-  console.log('Testing NumberCountBytes');
+  //console.log('Testing NumberCountBytes');
   i = 0;
   for(j = 0; j < TestBitCount; ++j)
     while(++i < (1 << j))
@@ -82,7 +82,7 @@ test("Utilities", () => {
     expect(NumberCountBytes(V)).toBe(Math.ceil(V.toString(16).length / 2));
   }
   
-  console.log('Testing NumberCountBits');
+  //console.log('Testing NumberCountBits');
   i = 0;
   for(j = 0; j < TestBitCount; ++j)
     while(++i < (1 << j)) expect(NumberCountBits(i)).toBe(j);
@@ -106,9 +106,9 @@ test("Utilities", () => {
   console.log('Testing HexToBigInt');
   for(j = 0; j < TestPrintCount; ++j) {
     let Value = BigIntRandom(randomInt);
-    console.log('Value:0x' + Value);
+    //console.log('Value:0x' + Value);
     const Result = HexToBigInt(Value.toString(16));
-    console.log('Result:' + Result);
+    //console.log('Result:' + Result);
     if(Value != Result) {
       console.log('HexToBigInt CRITICAL ERROR ' + Value + ': 0x' + 
                   Value.toString(16) + ' found ' + Result + ': 0x' + 
@@ -122,11 +122,11 @@ test("Utilities", () => {
   let str = int_i.toString(16);
   let int_p = HexToBigInt(str);
   BigIntVerify(int_i, int_p, '::HexToBigInt::A');
-  console.log(
-    'Scanning LID Hex...\n\n' +
-    '\nint_i: 0x' + int_i.toString(16) + "  0b'" + int_i.toString(2) + 
-    '\nint_p: 0x' + int_p.toString(16) + "  0b'" + int_p.toString(2) +
-    '\nint_h: 0x' + str);
+  //console.log(
+  //  'Scanning LID Hex...\n\n' +
+  //  '\nint_i: 0x' + int_i.toString(16) + "  0b'" + int_i.toString(2) + 
+  //  '\nint_p: 0x' + int_p.toString(16) + "  0b'" + int_p.toString(2) +
+  //  '\nint_h: 0x' + str);
 
   BigIntVerify(int_i, int_p, '::B');
 
@@ -142,16 +142,15 @@ test("Utilities", () => {
   for(j = 2; j < TestBitCount; ++j) {
     for (let i = 0; i < (j < TestsPerBit ? j >> 2 : TestsPerBit); ++i) {
       int_i = BigIntInBitRange(randomInt, j < TestsPerBit ? 1 : j, j);
-      str = int_i.toString(16);
-      int_p = HexToBigInt(str);
+      const IntIHex = int_i.toString(16);
+      int_p = HexToBigInt(IntIHex);
       BigIntVerify(int_i, int_p, '::BigIntToHex');
       
       buf = BigIntToBuffer(int_i);
       int_p = BufferToBigInt(buf);
       BigIntVerify(int_i, int_p, '::BigIntToBuffer');
       
-      str = buf.toString(16);
-      buf = HexToBuffer(buf);
+      buf = HexToBuffer(IntIHex);
       int_p = BufferToBigInt(buf);
       BigIntVerify(int_i, int_p, '::HexToBuffer');
     }
