@@ -111,7 +111,8 @@ export function CountBits(value: bigint | number): number {
 
 // Returns the number of bytes in a bigint.
 export function BigIntByteCount(value: bigint): number {
-  return CountBits(value) >> 3;
+  const BitCount = CountBits(value);
+  return (BitCount >> 3) + (BitCount & 0x7 ? 1 : 0);
 }
 
 /* Converts a BigInt to a Buffer.
@@ -120,7 +121,7 @@ may require another function pointer type hack.
 @return A Buffer containing [lid_source_lsw, LIDNextMSW()]. */
 export function BigIntToBuffer(value: bigint) {
   const ByteCount = BigIntByteCount(value);
-  console.log("ByteCount:" + ByteCount);
+  //console.log('value:' + value + ' ByteCount:' + ByteCount);
   const Buf = Buffer.alloc(ByteCount);
   for(let index = 0; index < ByteCount; ++index) {
     Buf[index] = Number((value >> BigInt(index << 3)) & 0xffn);
@@ -130,20 +131,20 @@ export function BigIntToBuffer(value: bigint) {
 
 // Pads a binary string with leading zeros aligned to a bit boundary.
 export function BinaryPad(value: string | number | bigint,
-                          bit_count: number = 64) { 
-  const V = ((typeof value).toString() != 'string')
-        ? value.toString(2)
-        : String(value);
-  if(bit_count < V.length) {
-    if (bit_count < 3) return '.'.repeat(bit_count);
-    return V.substring(0, bit_count - 3) + '...';
+                          bit_count: number = 64, prefix: string = '0b') { 
+  const str = ((typeof value).toString() == 'string')
+            ? String(value)
+            : value.toString(2);
+  if(bit_count < str.length) {
+    if (bit_count < 3) return prefix + '.'.repeat(bit_count);
+    return prefix + str.substring(0, bit_count - 3) + '...';
   }
-  return '0'.repeat(bit_count - V.length) + V;
+  return prefix + '0'.repeat(bit_count - str.length) + str;
 }
 
 export function BinaryPadBitCount(value: string | number | bigint,
-  bit_count: number = 64) { 
-  return BinaryPad(value, bit_count) + ':' + 
+    bit_count: number = 64, prefix: string = '0b') { 
+  return BinaryPad(value, bit_count, prefix) + ':' + 
     ((typeof value).toString() == 'string' ? String(value).length 
                                            : BigInt(value).toString(2).length)
 }
@@ -155,7 +156,7 @@ export function DateTimeSeconds(): number {
 
 // Converts a Buffer to a BigInt.
 export function BufferToBigInt(buf: Buffer): bigint {
-  console.log('buf:"' + buf.toString() + '":' + buf.length)
+  //console.log('buf:"' + buf.toString() + '":' + buf.length);
   let result = 0n;
   for(let i = 0; i < buf.length; ++i)
     result |= BigInt(buf[i] ?? 0) << BigInt(i << 3);
@@ -172,21 +173,26 @@ export function BufferToHex(buf: Buffer): string {
 
 // Pads a hex value with leading zeros aligned to n-bit boundary.
 export function HexPad(value: string | number | bigint, 
-    bit_count: number = 64) {
-  const HexCharsMax = (bit_count >> 2) + (bit_count & 0x3) ? 1 : 0;
-  let str = String(value);
-  if(str.length > HexCharsMax) {
-    if (HexCharsMax < 3) return '.'.repeat(HexCharsMax);
-    return str.substring(0, HexCharsMax - 3) + '...';
+    bit_count: number = 64, prefix: string = '0x'): string {
+  if(bit_count <= 0) return 'ERROR::HexPad bit_count <= 0';
+  const HexCount = (bit_count >> 2) + ((bit_count & 0x3) ? 1 : 0);
+  let str = (typeof value).toString() == 'string'
+          ? String(value)
+          : value.toString(16);
+  if(str.length > HexCount) {
+    if (HexCount < 3) return prefix + '.'.repeat(HexCount);
+    return prefix + str.substring(0, HexCount - 3) + '...';
   }
-  return '0'.repeat(HexCharsMax - str.length) + value;
+  return prefix + '0'.repeat(HexCount - str.length) + str;
 }
 
+// Pads a hex value with leading zeros aligned to n-bit boundary 
+// followed by the bit count.
 export function HexPadBitCount(value: string | number | bigint,
-  bit_count: number = 64) { 
-  return HexPad(value, bit_count) + ':' + 
+  bit_count: number = 64, prefix: string = '0x') { 
+  return HexPad(value, bit_count, prefix, ) + ':' + 
     ((typeof value).toString() == 'string' ? String(value).length 
-                                           : BigInt(value).toString(2).length)
+                                           : BigInt(value).toString(2).length);
 }
 
 // Converts a hex character string to a number.
@@ -215,11 +221,35 @@ export function HexToBigInt(input: string): bigint {
 }
 
 // Converts a hex string to a Buffer.
-export function HexToBuffer(hex: string) {
-  const ByteCount = hex.length >> 1; // >> 1 to / 2
+export function HexToBuffer(hex: string): Buffer {
+  //console.log ('::HexToBuffer(hex):"' + hex + '"');
+  let length = hex.length;
+  let j = 0;
+  let nibble = hex[j];
+  while(nibble == '0') nibble = hex[++j];
+  let count = length - j;
+  const LSb = count & 0x1;
+  const ByteCount = (count >> 1) + LSb; // >> 1 to / 2
   const Buf = Buffer.alloc(ByteCount);
-  for (let index = 0; index < ByteCount; ++index)
-    Buf[index] = HexToNibble(hex[index << 1]);
+  if(ByteCount <= 0) return Buf;
+  let i = ByteCount - 1;
+  let a = HexToNibble(nibble);
+  if(a < 0) return Buf;
+  if(LSb == 1) {
+    Buf[i--] = a;
+    a = HexToNibble(hex[++j]);
+    if(a < 0) return Buf;
+  }
+  while (a >= 0) {
+    let b =  HexToNibble(hex[++j]);
+    //console.log('a:' + a + ' b:' + b);
+    if(b < 0) {
+      Buf[i] = a;
+      return Buf;
+    }
+    Buf[i--] = (a << 4) | b;
+    a = HexToNibble(hex[++j]);
+  }
   return Buf;
 }
 

@@ -1,29 +1,39 @@
 // Copyright AStartup. MIT License. You can find a copy of the license at 
 // http://github.com/AStarStartup/LinearId
 
-//const { randomInt } = require('crypto');
-//const { LID8Next } = require('linearid');
+const { randomInt } = require('crypto');
+const { BinaryPad, LLIDNext, LLIDTimestamp } = require('linearid');
 
-import { test } from '@jest/globals';
-//import {TestCount, TestLoopCount, TestTimeDelay, TestPrintCount 
-//} from './GTests';
+import { expect, test } from '@jest/globals';
+import { TestLoopCount, TestSpinWaitCount, TestPrintCount 
+} from './GTests';
 
 test("LLID works", () => {
-  /*
   for(let k = 0; k < TestLoopCount; k++) {
     for(let i = 0; i < TestPrintCount; ++i) {
-      let lid = LID8Next(randomInt);
-      console.log(i + ': ' + lid + "  0b'" + lid.toString(2));
+      let lid = LLIDNext(randomInt);
+      console.log(i + ': ' + lid + "  " + BinaryPad(lid));
+    }
+    let now = Math.floor(new Date().getTime() / 100);
+    for(let i = 0; i < TestPrintCount; ++i) {
+      const LID = LLIDNext(randomInt);
+      const Timestamp = LLIDTimestamp(LID);
+      expect(Timestamp).toBeGreaterThan(now);
+      expect(Timestamp).toBeLessThan(now + 1);
     }
     let then = new Date().getTime();
-    for(let i = 0; i < TestTimeDelay; ++i) {
+    for(let i = 0; i < TestSpinWaitCount; ++i) {
     }
     console.log('Waited ' + (new Date().getTime() - then) + ' milliseconds');
-    for(let i = 0; i < TestCount; ++i) {
-      let lid = LID8Next(randomInt);
-      console.log(i + ': ' + lid + "  0b'" + lid.toString(2));
+    now = Math.floor(new Date().getTime() / 100);
+    for(let i = 0; i < TestPrintCount; ++i) {
+      const LID = LLIDNext(randomInt);
+      const Timestamp = LLIDTimestamp(LID);
+      expect(Timestamp).toBeGreaterThan(now);
+      expect(Timestamp).toBeLessThan(now + 1);
     }
   }
+  /*
   LLIDPack
   LLIDPrint
   LLIDNextHex
