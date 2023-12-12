@@ -5,7 +5,7 @@
 //const { LID8Next } = require('linearid');
 
 import { test } from '@jest/globals';
-//import {TestCount, TestLoopCount, TestTimeDelay, TestPrintCount } from './GTests';
+//import {TestCount, TestLoopCount, TestTimeDelay, TestPrintCount } from './Global';
 
 test("LID8 works!", () => {
   /*

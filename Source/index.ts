@@ -30,10 +30,12 @@ let llid_ticker: number = 0;
 //--- Utilities ---//
 
 // Cryptographically-secure Random Number Generator function type.
-type CSRNG = (min: number, max: number) => number;
+type RNG = (min: number, max: number) => number;
 
 // Number of bits in a JS number.
 export const NumberBitCount = 53;
+
+// Spin waits until the next second.
 
 // Converts a hex character string to a byte as a number.
 export function ByteToHex(input: number, dest: string = ''): string {
@@ -96,6 +98,11 @@ export function NumberCountBits(value: number): number {
   return BitCount + CountBitsInByte(msb);
 }
 
+export function NumberPrint(value: number | bigint) {
+  let V = BigInt(value);
+  const DecimalCount = BigIntCountDecimals(V);
+}
+
 // Returns the number of bits in a bigint.
 export function CountBits(value: bigint | number): number {
   let v: bigint = BigInt(value);
@@ -110,9 +117,82 @@ export function CountBits(value: bigint | number): number {
 }
 
 // Returns the number of bytes in a bigint.
-export function BigIntByteCount(value: bigint): number {
+export function BigIntCountBytes(value: bigint): number {
   const BitCount = CountBits(value);
   return (BitCount >> 3) + (BitCount & 0x7 ? 1 : 0);
+}
+
+// Counts the number of decimals in a bigint.
+export function NumberCountDecimals(value:number): number {
+  const BitCount = NumberCountBits(value);
+  // 2^53 = 9.007199254740992e15
+  if(value < 0) value *= -1;
+  
+  if(value < 100000000) {
+    if (value < 10000) {
+      if (value < 100) {
+        if(value < 10)
+          return 1;
+        else
+          return 2;
+      } else {
+        if (value < 1000)
+          return 3;
+        else
+          return 4;
+      }
+    } else {
+      if (value < 1000000) {
+        if (value < 100000)
+          return 5;
+        else
+          return 6;
+      } else {
+        if (value < 10000000)
+          return 7;
+        else
+          return 8;
+      }
+    }
+  } else {
+    if (value < 1000000000000) {
+      if (value < 10000000000) {
+        if (value < 1000000000)
+          return 9;
+        else
+          return 10;
+      } else {
+        if (value < 100000000000)
+          return 11;
+        else
+          return 12;
+      }
+    } else {
+      if (value < 100000000000000) {
+        if (value < 10000000000000)
+          return 13;
+        else
+          return 14;
+      } else {
+        if (value < 1000000000000000)
+          return 15;
+        else
+          return 16;
+      }
+    }
+  }
+}
+
+// Counts the number of decimals in a bigint.
+export function BigIntCountDecimals(value:bigint): number {
+  if(value < 0n) value *= -1n;
+  let decimal_count = 0;
+  const B53DecimalMax = 1000000000000000n;
+  while(value >= B53DecimalMax) {
+    decimal_count += 15;
+    value /= B53DecimalMax;
+  }
+  return decimal_count + NumberCountDecimals(Number(value));
 }
 
 /* Converts a BigInt to a Buffer.
@@ -120,7 +200,7 @@ export function BigIntByteCount(value: bigint): number {
 may require another function pointer type hack.
 @return A Buffer containing [lid_source_lsw, LIDNextMSW()]. */
 export function BigIntToBuffer(value: bigint) {
-  const ByteCount = BigIntByteCount(value);
+  const ByteCount = BigIntCountBytes(value);
   //console.log('value:' + value + ' ByteCount:' + ByteCount);
   const Buf = Buffer.alloc(ByteCount);
   for(let index = 0; index < ByteCount; ++index) {
@@ -147,11 +227,6 @@ export function BinaryPadBitCount(value: string | number | bigint,
   return BinaryPad(value, bit_count, prefix) + ':' + 
     ((typeof value).toString() == 'string' ? String(value).length 
                                            : BigInt(value).toString(2).length)
-}
-
-// Gets the current date-time in seconds.
-export function DateTimeSeconds(): number {
-  return Math.floor(new Date().getTime() / 1000);
 }
 
 // Converts a Buffer to a BigInt.
@@ -254,7 +329,7 @@ export function HexToBuffer(hex: string): Buffer {
 }
 
 // Generates a random bigint in the given min:max range.
-export function BigIntInRange(rng: CSRNG, 
+export function BigIntInRange(rng: RNG, 
     min: bigint | number = 0,
     max: bigint | number = 0xffffffffffff): bigint {
   if(min > max) return 0n;
@@ -279,7 +354,7 @@ export function BigIntInRange(rng: CSRNG,
   const Shift = (RangeBitCount - count);
   const Remainder = Number(Range >> Shift);
   if(Remainder != 0)
-    result |= BigInt(rng(0, Remainder)) << Shift
+    result |= BigInt(rng(0, Remainder)) << Shift;
   /*
   console.log('RangeBitCount:' + RangeBitCount + ' count:' + count + 
               ' Remainder: ' + Remainder + 
@@ -289,11 +364,11 @@ export function BigIntInRange(rng: CSRNG,
 }
 
 // Generates a cryptographically secure bigint.
-export function BigIntInBitRange(rng: CSRNG, bit_min: bigint | number = 1,
+export function BigIntInBitRange(rng: RNG, bit_min: bigint | number = 1,
     bit_max: bigint | number = 64): bigint {
   if(bit_min <= 0 || bit_max <= 0 || bit_min > bit_max) return 0n;
   const Max = (1n << BigInt(bit_max)) - 1n;
-  const Min = bit_min == 1n ? 0n: (1n << (BigInt(bit_min) - 1n));
+  const Min = bit_min == 1n ? 0n : (1n << (BigInt(bit_min) - 1n));
   //console.log('bit_min:' + bit_min + ' bit_max:' + bit_max + ' Min:' + 
   //            Min + ' Max:' + Max);
   return BigIntInRange(rng, Min, Max);
@@ -330,19 +405,19 @@ export function BigIntIsInBitRange(value: bigint | number,
 }
 
 // Generates a cryptographically secure bigint.
-export function BigIntRandom(rng: CSRNG, 
+export function BigIntRandom(rng: RNG, 
     bit_count: bigint | number = 64): bigint {
   return BigIntInBitRange(rng, 0, bit_count);
 }
 
 // Generates a random number in the given range of bits.
-export function NumberInBitRange(rng: CSRNG, low_bit: number, high_bit: number)
+export function NumberInBitRange(rng: RNG, low_bit: number, high_bit: number)
 {
   return Number(BigIntInBitRange(rng, low_bit, high_bit));
 }
 
 // Generates a cryptographically secure bigint.
-export function NumberRandom(rng: CSRNG): number {
+export function NumberRandom(rng: RNG): number {
   return Number(BigIntRandom(rng, NumberBitCount));
 }
 
@@ -351,6 +426,16 @@ export function NumberToHex(value: number, dest: string = ''): string {
   let hex = value.toString(16);
   if(value < 10) return dest + '0' + hex;
   return dest + hex;
+}
+
+// Gets the current date-time in seconds as a bigint.
+export function TimestampBigInt(): bigint {
+  return BigInt(Math.floor(new Date().getTime() / 1000));
+}
+
+// Gets the current date-time in seconds as a number.
+export function TimestampNumber(): number {
+  return Math.floor(new Date().getTime() / 1000);
 }
 
 //--- LLID ---//
@@ -366,13 +451,12 @@ export const LLIDTickerBitCount = 64n - LLIDTimestampBitCount;
 
 // Extracts the timestamp.
 export function LLIDTimestamp(lid: LLID) {
-  const Mask = (1n << LLIDTimestampBitCount) - 1n;
-  return (lid >> (LLIDTickerBitCount + LLIDTimestampBitCount)) & Mask;
+  return (lid >> LLIDTickerBitCount) & ((1n << LLIDTimestampBitCount) - 1n);
 }
 
 // Extracts the ticker count.
 export function LLIDTicker(lid: LLID) {
-  return (lid >> LLIDTickerBitCount) & ((1n << LLIDTickerBitCount) - 1n);
+  return lid & ((1n << LLIDTickerBitCount) - 1n);
 }
 
 // Extracts the timestamp and ticker from a LLID.
@@ -388,12 +472,13 @@ export function LLIDPack(timestamp: bigint, ticker: bigint): LLID {
 // Prints a LID to a string.
 export function LLIDPrint(llid: LLID) {
   const [ Timestamp, Ticker ] = LLIDUnpack(llid);
-  return (new Date(Number(Timestamp)).toString()) + ' tick:' + Ticker;
+  const Time = new Date(Number(Timestamp));
+  return Time.toISOString().split('T')[0] + ' tick:' + Ticker;
 }
 
 // Generates the next Local LID.
 export function LLIDNext(): LLID {
-  let timestamp = DateTimeSeconds();
+  let timestamp = TimestampNumber();
   let time_last = lid_timestamp;
   let ticker = llid_ticker;
   let invalid_tick_count = 1n << (64n - LLIDTimestampBitCount);
@@ -402,8 +487,8 @@ export function LLIDNext(): LLID {
     lid_timestamp = timestamp;
   } else {
     if (ticker >= invalid_tick_count) {
-      let now = DateTimeSeconds();
-      while(now == time_last) now = DateTimeSeconds();
+      let now = TimestampNumber();
+      while(now == time_last) now = TimestampNumber();
       timestamp = now;
       llid_ticker = 0;
     } else {
@@ -479,7 +564,7 @@ export function LIDSourceId(): bigint {
 }
 
 // Generates a cryptographically-secure random source id.
-export function LIDSourceNext(rng: CSRNG) {
+export function LIDSourceNext(rng: RNG) {
   // crypto.randomInt can generate 48-bit random numbers.
   const MSBBitCount = Number(LIDSourceBitCount) - 48;
   const MSBMask = (1 << MSBBitCount) - 1;
@@ -500,16 +585,16 @@ export function LIDSourceIncrement() {
 
 /* Generates the next LID as an array of two bigint.
 @return [LIDNextMSW(), lid_source_lsw]. */
-export function LIDNext(rng: CSRNG): LID16 {
+export function LIDNext(rng: RNG): LID16 {
   if(lid_source == 0n) LIDSourceNext(rng);
 
-  let timestamp = DateTimeSeconds();
+  let timestamp = TimestampNumber();
   if (timestamp != lid_timestamp) {
     lid_timestamp = timestamp;
     lid_ticker = 0;
   }
   while (lid_ticker >= (1n << LIDTickerBitCount)) {
-    timestamp = DateTimeSeconds();
+    timestamp = TimestampNumber();
     if (timestamp != lid_timestamp) {
       lid_timestamp = timestamp;
       lid_ticker = 0;
@@ -519,13 +604,13 @@ export function LIDNext(rng: CSRNG): LID16 {
 }
 
 // Generates the next LID as a string or prints it to the dest.
-export function LIDNextHex(rng: CSRNG, dest: string = ''): string {
+export function LIDNextHex(rng: RNG, dest: string = ''): string {
   return dest + LIDNext(rng).toString(16);
 }
 
 /* Generates the next LID as a Buffer.
 @return A Buffer containing [lid_source_lsw, LIDNextMSW()]. */
-export function LIDNextBuffer(rng: CSRNG): Buffer {
+export function LIDNextBuffer(rng: RNG): Buffer {
   return BigIntToBuffer(LIDNext(rng));
 }
 
@@ -583,12 +668,13 @@ export function LID8Unpack(llid: LLID) {
 // Prints a LID to a string.
 export function LID8Print(llid: LLID) {
   const [ Timestamp, Ticker ] = LLIDUnpack(llid);
-  return (new Date(Number(Timestamp)).toString()) + ' tick:' + Ticker;
+  const Time = new Date(Number(Timestamp));
+  return Time.toISOString().split('T')[0] + ' tick:' + Ticker;
 }
 
 // Generates the next 8-byte/128-bit LID.
-export function LID8Next(rng: CSRNG): LID8 {
-  let timestamp = DateTimeSeconds();
+export function LID8Next(rng: RNG): LID8 {
+  let timestamp = TimestampNumber();
   let time_last = lid_timestamp;
   let ticker = lid8_ticker;
   let lid = lid_source >> (64n - LID8SourceBitCount);
@@ -598,8 +684,8 @@ export function LID8Next(rng: CSRNG): LID8 {
     ticker = 0;
   } else {
     if(ticker >= LID8TickerMax) {
-      let time_now = DateTimeSeconds();
-      while (timestamp == time_now) time_now = DateTimeSeconds();
+      let time_now = TimestampNumber();
+      while (timestamp == time_now) time_now = TimestampNumber();
       ticker = 0;
       timestamp = time_now;
     }
@@ -613,6 +699,6 @@ export function LID8Next(rng: CSRNG): LID8 {
 }
 
 // Generates the next Local LID hex string.
-export function LID8NextHex(rng: CSRNG): string {
+export function LID8NextHex(rng: RNG): string {
   return LID8Next(rng).toString(16);
 }

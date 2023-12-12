@@ -2,14 +2,15 @@
 // http://github.com/AStarStartup/LinearId
 
 const { randomInt } = require('crypto');
-const { BigIntInBitRange, BigIntIsInBitRange, BigIntToBuffer, BigIntRandom,
-  BinaryPad, BinaryPadBitCount, BufferToBigInt, CountBitsInByte, HexToBigInt, 
-  HexToBuffer, HexPadBitCount, NumberCountBits, NumberCountBytes
+const { BigIntCountDecimals, BigIntInBitRange, BigIntIsInBitRange, 
+  BigIntToBuffer, BigIntRandom, BinaryPad, BinaryPadBitCount, BufferToBigInt, 
+  CountBitsInByte, HexToBigInt, HexToBuffer, HexPadBitCount, NumberCountBits, 
+  NumberCountBytes, NumberCountDecimals
 } = require('linearid'); 
 
 import { expect, test } from '@jest/globals';
 import { NumberInTestRange, TestBitCount, TestBitsUpTo, TestCount, 
-  TestsPerBit, TestPrintCount } from './GTests';
+  TestsPerBit, TestPrintCount } from './Global';
 
 /* @todo Test me!
 HexToBuffer
@@ -18,19 +19,16 @@ ByteToHex
 
 // Asserts the lsw_i and msw_i are the same as the lsw_p and msw_p 
 // respectively.
-export function BigIntVerify(int_i: bigint, int_p: bigint, tag: string) {
-  let o = '';
-  if(int_i != int_p) {
-    o = '\nError at ' + tag + 
-        '\nint_i: ' + HexPadBitCount(int_i) + 
-        '\nint_p: ' + HexPadBitCount(int_p) + 
-        '\ndiff : ' + HexPadBitCount((int_p ^ int_i)) + '\n' +
-        '\nint_i: ' + BinaryPadBitCount(int_i) + 
-        '\nint_p: ' + BinaryPadBitCount(int_p) + 
-        '\ndiff : ' + BinaryPadBitCount((int_p ^ int_i));
-    console.log(o);
-  }
-  expect(int_i == int_p).toBe(true); 
+export function BigIntVerify(expected: bigint, found: bigint, tag: string) {
+  if(expected != found)
+    console.log('\nUnexpected error at Utilities' + tag + 
+      '\nExpected: ' + HexPadBitCount(expected) + 
+      '\nFound   : ' + HexPadBitCount(found) + 
+      '\nXOR     : ' + HexPadBitCount(found ^ expected) + '\n' +
+      '\nExpected: ' + BinaryPadBitCount(expected) + 
+      '\nFound   : ' + BinaryPadBitCount(found) + 
+      '\nXOR     : ' + BinaryPadBitCount(found ^ expected));
+  expect(expected == found).toBe(true); 
 }
 
 test("Utilities", () => {
@@ -103,7 +101,7 @@ test("Utilities", () => {
       toBe(red_headed_stepchild.toString(2).length)
   }
 
-  console.log('Testing HexToBigInt');
+  //console.log('Testing HexToBigInt');
   for(j = 0; j < TestPrintCount; ++j) {
     let Value = BigIntRandom(randomInt);
     //console.log('Value:0x' + Value);
@@ -154,5 +152,20 @@ test("Utilities", () => {
       int_p = BufferToBigInt(buf);
       BigIntVerify(int_i, int_p, '::HexToBuffer');
     }
+  }
+
+  //console.log("Testing NumberCountDecimals...");
+  expect(NumberCountDecimals(1)).toBe(1);
+  j = 10;
+  for(i = 2; i <= 16; ++i) {
+    expect(NumberCountDecimals(j)).toBe(i);
+    j *= 10;
+  }
+
+  //console.log("Testing BigIntCountDecimals...");
+  let k = 10000000000000000n;
+  for(i = 17; i <= 100; ++i) {
+    expect(BigIntCountDecimals(k)).toBe(i);
+    k *= 10n;
   }
 });
