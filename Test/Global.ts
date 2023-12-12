@@ -20,9 +20,6 @@ export const TestPrintCount = 16;
 // Number of times to test each bit range with random numbers. Default: 1024
 export const TestsPerBit = 1 << 10;
 
-// Number of times to spin wait in the tests.
-export const TestSpinWaitCount = 1 << 20;
-
 // Generates a random number that is not in the exhaustive test range.
 export function NumberInTestRange() {
   return NumberInBitRange(randomInt, TestBitCount, 48);

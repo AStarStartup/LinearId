@@ -6,7 +6,7 @@ const { HexToBigInt, LIDNext, LIDSource, LIDSourceId, LIDSourceBitCount, LIDSour
 } = require('linearid');
 
 import { expect, test } from '@jest/globals';
-import {TestPrintCount } from './GTests';
+import {TestPrintCount } from './Global';
 
 test("LID Works", () => {
   /*
