@@ -4,18 +4,13 @@
 const { randomInt } = require('crypto');
 const { BigIntCountDecimals, BigIntInBitRange, BigIntIsInBitRange, 
   BigIntToBuffer, BigIntRandom, BinaryPad, BinaryPadBitCount, BufferToBigInt, 
-  CountBitsInByte, HexToBigInt, HexToBuffer, HexPadBitCount, NumberCountBits, 
+  ByteCountBits, HexToBigInt, HexToBuffer, HexPadBitCount, NumberCountBits, 
   NumberCountBytes, NumberCountDecimals
 } = require('linearid'); 
 
 import { expect, test } from '@jest/globals';
 import { NumberInTestRange, TestBitCount, TestBitsUpTo, TestCount, 
   TestsPerBit, TestPrintCount } from './Global';
-
-/* @todo Test me!
-HexToBuffer
-ByteToHex
-*/
 
 // Asserts the lsw_i and msw_i are the same as the lsw_p and msw_p 
 // respectively.
@@ -34,12 +29,11 @@ export function BigIntVerify(expected: bigint, found: bigint, tag: string) {
 test("Utilities", () => {
   let i = 0;
   let j = 0;
-  let o = '';
 
-  //console.log('Testing CountBitsInByte');
-  expect(CountBitsInByte(0)).toBe(0);
+  //console.log('Testing ByteCountBits');
+  expect(ByteCountBits(0)).toBe(0);
   for(j = 1; j <= 8; ++j)
-    while(++i < 1 << j) expect(CountBitsInByte(i)).toBe(j);
+    while(++i < 1 << j) expect(ByteCountBits(i)).toBe(j);
 
   //console.log('Testing BigIntRandom...');
   for(i = 0; i < TestPrintCount; ++i) {
@@ -153,19 +147,28 @@ test("Utilities", () => {
       BigIntVerify(int_i, int_p, '::HexToBuffer');
     }
   }
-
+  
   //console.log("Testing NumberCountDecimals...");
   expect(NumberCountDecimals(1)).toBe(1);
+  for(i = 0; i < 100000; ++i) {
+    const Expected = i.toString().length;
+    const Received = NumberCountDecimals(i);
+    if(Expected != Received) {
+      console.log('Unexpected error at Utilities::NumberCountDecimals'
+                + '\nExpected: ' + Expected + '\nReceived:' + Received);
+    }
+    expect(Received).toBe(Expected);
+  }
   j = 10;
   for(i = 2; i <= 16; ++i) {
-    expect(NumberCountDecimals(j)).toBe(i);
+    expect(NumberCountDecimals(j)).toBe(j.toString().length);
     j *= 10;
   }
-
+  
   //console.log("Testing BigIntCountDecimals...");
-  let k = 10000000000000000n;
+  let value = 10000000000000000n;
   for(i = 17; i <= 100; ++i) {
-    expect(BigIntCountDecimals(k)).toBe(i);
-    k *= 10n;
+    expect(BigIntCountDecimals(value)).toBe(i);
+    value *= 10n;
   }
 });

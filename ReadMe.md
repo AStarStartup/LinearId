@@ -5,11 +5,11 @@ LinearId is an npm package for generating 64-bit and 128-bit monotonic unique ID
 
 I am preparing to release the new v0.2.0 version of LinearId with the 64-bit LID8 and 128-bit LID16 format, this isn't actually v0.2.0, but it's close to it and I have too much work to risk losing. The main branch of this repo is possibly broken because I have a new Jest unit test but it shouldn't take long; sorry, it should work but I have not tested that. I'm not the best with GitHub and I'm configuring the GitHub Actions to auto-run the new Jest unit test when I make a pull request. I have no clue how long it will take to fix the rest of the tests, they were working before but I restructured everything to make it DRY to easier to test bit ranges.
 
-## Volunteers Needed
+## Contributing
 
 We need so people to help test LinearId to ensure everything is working properly, to use LinearId with the popular database engines, and contribute to the unit tests to get optimal test coverage.
 
-I can't figure out how to configure the NPM package so we can use the import syntax, you have to use const require syntax for now. I can use some help on #11. Thanks.
+I can't figure out how to configure the NPM package so we can use the import syntax, you have to use const require syntax for now. I can use some help on #11. Please start by reading the [Contributing Guide](./Contributing.md). Thanks.
 
 ## Solution
 

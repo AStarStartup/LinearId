@@ -4,46 +4,62 @@
 // Throughout this code when I refer to a timestamp this means a seconds 
 // timestamp.
 
-//--- Variables ---//
+//--- Constants ---//
 
-// The last time a LID was created.
-let lid_timestamp: number = Math.floor(new Date().getTime() / 1000);
+// Number of bits in a JS number.
+export const NumberBitCount = 53;
 
-// The number of times that LIDNext has been called this second.
-let lid_ticker: number = 0;
+// The window where a timestamp is valid in seconds.
+export const TimestampWindow = 100n;
 
-// The Source Id bigint.
-let lid_source: bigint = 0n;
+// The number of bits in the second or millisecond Local LID subsecond ticker.
+export const LLIDTimestampBitCount = 32n;
 
-// The LID8 Source Id as a number.
-let lid8_source: number = 0;
+// The number of bits in the LLID sub-second ticker.
+export const LLIDTickerBitCount = 64n - LLIDTimestampBitCount;
 
-// Flat to check the lid upon epoch. 
-let lid_source_check_on_epoch: boolean = false; 
+// The number of bits in the LID MSb timestamp.
+export const LIDTimestampBitCount = 33n;
 
-// The 8-byte Local LID ticker count.
-let lid8_ticker: number = 0;
+// The number of bits to use for the spin ticker.
+export const LIDTickerBitCount: bigint = 22n;
 
-// The 8-byte Local LID ticker count.
-let llid_ticker: number = 0;
+// The number of cryptographically-secure random numbers in the source id.
+export const LIDSourceBitCount = 128n - LIDTimestampBitCount - 
+                                 LIDTickerBitCount;
+
+// The number of bits in the Source and ticker.
+export const LIDSourceTickerBitCount = LIDSourceBitCount + LIDTickerBitCount;
+
+// The maximum value of this spin ticker.
+export const  LIDTickerMax = (1n << LIDTickerBitCount) - 1n;
+
+// The number of bits in a 8-byte LID source id.
+export const LID8TimestampBitCount = 32n;
+
+// The number of bits in a 8-byte LID source id.
+export const LID8TickerBitCount = 16n;
+
+// The number of bits in a 8-byte LID subsecond ticker.
+export const LID8SourceBitCount = 64n - LID8TimestampBitCount - 
+                                  LID8TickerBitCount;
+
+// The maximum value the 8-byte LID ticker, which is also the mask.
+export const LID8TickerMax = (1n << LID8TickerBitCount) - 1n;
 
 //--- Utilities ---//
 
 // Cryptographically-secure Random Number Generator function type.
 type RNG = (min: number, max: number) => number;
 
-// Number of bits in a JS number.
-export const NumberBitCount = 53;
-
-// Spin waits until the next second.
-
 // Converts a hex character string to a byte as a number.
-export function ByteToHex(input: number, dest: string = ''): string {
+export function PrintHexByte(input: number, dest: string = ''): string {
   if(input < 0n || input > 15n) return dest;
   return dest + NumberToHex(input & 0xf) + NumberToHex((input >> 4) & 0xf);
 }
 
-export function CountBitsInByte(value: number) {
+// Counts the number of bits in a byte.
+export function ByteCountBits(value: number) {
   if(value < 16) {
     if(value < 4) {
       if(value < 2) {
@@ -95,16 +111,32 @@ export function NumberCountBits(value: number): number {
   const BitCount = (NumberCountBytes(value) - 1) << 3; // << 3 to * 8
   let msb = (value < 1 << 30) ? value >> BitCount 
                               : Number(BigInt(value) >> BigInt(BitCount));
-  return BitCount + CountBitsInByte(msb);
+  return BitCount + ByteCountBits(msb);
 }
 
-export function NumberPrint(value: number | bigint) {
-  let V = BigInt(value);
-  const DecimalCount = BigIntCountDecimals(V);
+// Left pads and prints a number with the given character count.
+export function NumberPrint(value: number, char_count: number,
+                            pad: string = ' ') {
+  const Value = value.toString();
+  if(char_count <= 3) return '0'.repeat(char_count);
+  if(Value.length > char_count)
+    return Value.substring(0, char_count - 3) + '...';
+  return pad.repeat(char_count - Value.length) + Value;
+}
+
+// Left pads and prints a bigint or number with the given character count.
+export function BigIntPrint(value: number | bigint, char_count: number,
+                            pad: string = ' ') {
+  const Value = value.toString();
+  if(char_count <= 3) return '0'.repeat(char_count);
+  if(Value.length > char_count)
+    return Value.substring(0, char_count - 3) + '...';
+    return pad.repeat(char_count - Value.length) + Value;
+
 }
 
 // Returns the number of bits in a bigint.
-export function CountBits(value: bigint | number): number {
+export function BinaryCount(value: bigint | number): number {
   let v: bigint = BigInt(value);
   let count = 0;
   while(v >= Number.MAX_SAFE_INTEGER) {
@@ -118,13 +150,19 @@ export function CountBits(value: bigint | number): number {
 
 // Returns the number of bytes in a bigint.
 export function BigIntCountBytes(value: bigint): number {
-  const BitCount = CountBits(value);
+  const BitCount = BinaryCount(value);
   return (BitCount >> 3) + (BitCount & 0x7 ? 1 : 0);
+}
+
+// Returns the number of bytes in a bigint.
+export function BigIntCountBits(value: bigint): number {
+  const ByteCount = BigIntCountBytes(value);
+
+  return ((ByteCount - 1) << 3) + NumberCountBits(Number(value))
 }
 
 // Counts the number of decimals in a bigint.
 export function NumberCountDecimals(value:number): number {
-  const BitCount = NumberCountBits(value);
   // 2^53 = 9.007199254740992e15
   if(value < 0) value *= -1;
   
@@ -183,6 +221,38 @@ export function NumberCountDecimals(value:number): number {
   }
 }
 
+// Prints amd pads a number to a string to the given character count.
+export function NumberPad(value: number, digit_count: number, 
+    pad:string = ' ') {
+  const DecimalCount = NumberCountDecimals(value);
+  if(DecimalCount > digit_count) {
+    if(digit_count <= 3) return '.'.repeat(digit_count);
+    return value.toString().substring(0, digit_count - 3) + '...';
+  }
+  return pad.repeat(digit_count - DecimalCount) + value;
+}
+
+// Counts the number of decimals in a string, number, or bigint.
+// @warning Untested!
+export function CountDecimals(value: bigint | number | string): number {
+  switch((typeof value).toString()) {
+    case 'bigint': return BigIntCountDecimals(BigInt(value));
+    case 'number': return NumberCountDecimals(Number(value));
+  }
+  const Value = String(value);
+  let i = 0;
+  let c = Value.charCodeAt(i);
+  let leading_zero_count = 0;
+  if(c == '0'.charCodeAt(0)) {
+    c = Value.charCodeAt(++i);
+    while(c == '0'.charCodeAt(0)) c = Value.charCodeAt(++i);
+    leading_zero_count = i;
+  }
+  while(c != undefined && c >= '0'.charCodeAt(0) && c <= '9'.charCodeAt(0))
+    c = Value.charCodeAt(++i);
+  return i - leading_zero_count;
+}
+
 // Counts the number of decimals in a bigint.
 export function BigIntCountDecimals(value:bigint): number {
   if(value < 0n) value *= -1n;
@@ -209,9 +279,23 @@ export function BigIntToBuffer(value: bigint) {
   return Buf;
 }
 
+// Prints amd pads a number to a string to the given character count.
+export function BigIntPad(value: bigint, decimals_max: number, 
+  pad:string = ' ') {
+  const DecimalCount = BigIntCountDecimals(value);
+  if(DecimalCount > decimals_max) {
+    if(decimals_max <= 3) return pad.repeat(decimals_max);
+    return value.toString().substring(0, decimals_max - 3) + '...';
+  }
+  return pad.repeat(decimals_max - DecimalCount) + value;
+}
+
 // Pads a binary string with leading zeros aligned to a bit boundary.
+// @warning Does not check if the value string is not a binary string.
 export function BinaryPad(value: string | number | bigint,
-                          bit_count: number = 64, prefix: string = '0b') { 
+                          bit_count: number = 64, prefix: string = '0b',
+                          pad: string = '0') { 
+  if(bit_count <= 0) return '';
   const str = ((typeof value).toString() == 'string')
             ? String(value)
             : value.toString(2);
@@ -219,7 +303,7 @@ export function BinaryPad(value: string | number | bigint,
     if (bit_count < 3) return prefix + '.'.repeat(bit_count);
     return prefix + str.substring(0, bit_count - 3) + '...';
   }
-  return prefix + '0'.repeat(bit_count - str.length) + str;
+  return prefix + pad.repeat(bit_count - str.length) + str;
 }
 
 export function BinaryPadBitCount(value: string | number | bigint,
@@ -242,23 +326,25 @@ export function BufferToBigInt(buf: Buffer): bigint {
 export function BufferToHex(buf: Buffer): string {
   let result = '';
   for(let i = 0; i < buf.length; ++i)
-    result = ByteToHex(buf[i] ?? 0, result);
+    result = PrintHexByte(buf[i] ?? 0, result);
   return result;
 }
 
 // Pads a hex value with leading zeros aligned to n-bit boundary.
+// @warning Does not check if the value string is not a hex string.
 export function HexPad(value: string | number | bigint, 
-    bit_count: number = 64, prefix: string = '0x'): string {
-  if(bit_count <= 0) return 'ERROR::HexPad bit_count <= 0';
+    bit_count: number = 64, prefix: string = '0x', pad: string = '0'): string
+{
+  if(bit_count <= 0) return '';
   const HexCount = (bit_count >> 2) + ((bit_count & 0x3) ? 1 : 0);
-  let str = (typeof value).toString() == 'string'
+  let hex = (typeof value).toString() == 'string'
           ? String(value)
           : value.toString(16);
-  if(str.length > HexCount) {
+  if(hex.length > HexCount) {
     if (HexCount < 3) return prefix + '.'.repeat(HexCount);
-    return prefix + str.substring(0, HexCount - 3) + '...';
+    return prefix + hex.substring(0, HexCount - 3) + '...';
   }
-  return prefix + '0'.repeat(HexCount - str.length) + str;
+  return prefix + pad.repeat(HexCount - hex.length) + hex;
 }
 
 // Pads a hex value with leading zeros aligned to n-bit boundary 
@@ -267,7 +353,7 @@ export function HexPadBitCount(value: string | number | bigint,
   bit_count: number = 64, prefix: string = '0x') { 
   return HexPad(value, bit_count, prefix, ) + ':' + 
     ((typeof value).toString() == 'string' ? String(value).length 
-                                           : BigInt(value).toString(2).length);
+                                           : BinaryCount(BigInt(value)));
 }
 
 // Converts a hex character string to a number.
@@ -338,7 +424,7 @@ export function BigIntInRange(rng: RNG,
   const Max = BigInt(max);
   const Min = BigInt(min);
   const Range = Max - Min; // 5-(-8)=13
-  const RangeBitCount = BigInt(CountBits(Range));
+  const RangeBitCount = BigInt(BinaryCount(Range));
   //console.log('BigIntInRange: Min:' + Min + ':' + Min.toString(2).length +
   //            ' Max:' + Max + ':' + Max.toString(2).length + 
   //            ' RangeBitCount:' + RangeBitCount);
@@ -429,34 +515,65 @@ export function NumberToHex(value: number, dest: string = ''): string {
 }
 
 // Gets the current date-time in seconds as a bigint.
-export function TimestampBigInt(): bigint {
-  return BigInt(Math.floor(new Date().getTime() / 1000));
+export function TimestampSeconds(): number {
+  return Math.floor(new Date().getTime() / 1000);
+}
+
+// Spin waits until the next second.
+export function TimestampSecondsNext() {
+  let time_start = TimestampSeconds();
+  let now = time_start;
+  while(now == time_start) now = TimestampSeconds();
+  return now;
+}
+
+// Gets the current date-time in seconds as a bigint.
+export function TimestampNextAsBigInt(): bigint {
+  return BigInt(TimestampSecondsNext());
 }
 
 // Gets the current date-time in seconds as a number.
-export function TimestampNumber(): number {
-  return Math.floor(new Date().getTime() / 1000);
+export function TimestampSecondsAsBigInt(): bigint {
+  return BigInt(TimestampSeconds());
 }
+
+//--- Variables ---//
+
+// The last time a LID was created.
+let lid_timestamp: number = TimestampSeconds();
+
+// The number of times that LIDNext has been called this second.
+let lid_ticker: number = 0;
+
+// The Source Id bigint.
+let lid_source: bigint = 0n;
+
+// The LID8 Source Id as a number.
+let lid8_source: number = 0;
+
+// Flat to check the lid upon epoch. 
+let lid_source_check_on_epoch: boolean = false; 
+
+// The 8-byte Local LID ticker count.
+let lid8_ticker: number = 0;
+
+// The 8-byte Local LID ticker count.
+let llid_ticker: number = 0;
 
 //--- LLID ---//
 
 /* A 8-byte Local Linear ID. */
 export type LLID = bigint;
 
-// The number of bits in the second or millisecond Local LID subsecond ticker.
-export const LLIDTimestampBitCount = 32n;
-
-// The number of bits in the LLID sub-second ticker.
-export const LLIDTickerBitCount = 64n - LLIDTimestampBitCount;
-
 // Extracts the timestamp.
 export function LLIDTimestamp(lid: LLID) {
-  return (lid >> LLIDTickerBitCount) & ((1n << LLIDTimestampBitCount) - 1n);
+  return (BigInt(lid) >> LLIDTickerBitCount) 
+       & ((1n << LLIDTimestampBitCount) - 1n);
 }
 
 // Extracts the ticker count.
 export function LLIDTicker(lid: LLID) {
-  return lid & ((1n << LLIDTickerBitCount) - 1n);
+  return BigInt(lid) & ((1n << LLIDTickerBitCount) - 1n);
 }
 
 // Extracts the timestamp and ticker from a LLID.
@@ -478,7 +595,7 @@ export function LLIDPrint(llid: LLID) {
 
 // Generates the next Local LID.
 export function LLIDNext(): LLID {
-  let timestamp = TimestampNumber();
+  let timestamp = TimestampSeconds();
   let time_last = lid_timestamp;
   let ticker = llid_ticker;
   let invalid_tick_count = 1n << (64n - LLIDTimestampBitCount);
@@ -487,8 +604,8 @@ export function LLIDNext(): LLID {
     lid_timestamp = timestamp;
   } else {
     if (ticker >= invalid_tick_count) {
-      let now = TimestampNumber();
-      while(now == time_last) now = TimestampNumber();
+      let now = TimestampSeconds();
+      while(now == time_last) now = TimestampSeconds();
       timestamp = now;
       llid_ticker = 0;
     } else {
@@ -518,22 +635,6 @@ export function LLIDNextBuffer(): Buffer {
 
 /* A 16-bit Linear ID. */
 export type LID16 = bigint;
-
-// The number of bits in the LID MSb timestamp.
-export const LIDTimestampBitCount = 33n;
-
-// The number of bits to use for the spin ticker.
-export const LIDTickerBitCount: bigint = 22n;
-
-// The number of cryptographically-secure random numbers in the source id.
-export const LIDSourceBitCount = 128n - LIDTimestampBitCount - 
-                                 LIDTickerBitCount;
-
-// The number of bits in the Source and ticker.
-export const LIDSourceTickerBitCount = LIDSourceBitCount + LIDTickerBitCount;
-
-// The maximum value of this spin ticker.
-export const  LIDTickerMax = (1n << LIDTickerBitCount) - 1n;
 
 // Extracts the timestamp from the lid.
 export function LIDTimestamp(lid: LID16): bigint {
@@ -588,13 +689,13 @@ export function LIDSourceIncrement() {
 export function LIDNext(rng: RNG): LID16 {
   if(lid_source == 0n) LIDSourceNext(rng);
 
-  let timestamp = TimestampNumber();
+  let timestamp = TimestampSeconds();
   if (timestamp != lid_timestamp) {
     lid_timestamp = timestamp;
     lid_ticker = 0;
   }
   while (lid_ticker >= (1n << LIDTickerBitCount)) {
-    timestamp = TimestampNumber();
+    timestamp = TimestampSeconds();
     if (timestamp != lid_timestamp) {
       lid_timestamp = timestamp;
       lid_ticker = 0;
@@ -618,19 +719,6 @@ export function LIDNextBuffer(rng: RNG): Buffer {
 
 /* A 8-byte Linear ID. */
 export type LID8 = bigint;
-
-// The number of bits in a 8-byte LID source id.
-export const LID8TimestampBitCount = 32n;
-
-// The number of bits in a 8-byte LID source id.
-export const LID8TickerBitCount = 16n;
-
-// The number of bits in a 8-byte LID subsecond ticker.
-export const LID8SourceBitCount = 64n - LID8TimestampBitCount - 
-                                  LID8TickerBitCount;
-
-// The maximum value the 8-byte LID ticker, which is also the mask.
-export const LID8TickerMax = (1n << LID8TickerBitCount) - 1n;
 
 // Extracts the timestamp.
 export function LID8Timestamp(lid: LID8) {
@@ -674,7 +762,7 @@ export function LID8Print(llid: LLID) {
 
 // Generates the next 8-byte/128-bit LID.
 export function LID8Next(rng: RNG): LID8 {
-  let timestamp = TimestampNumber();
+  let timestamp = TimestampSeconds();
   let time_last = lid_timestamp;
   let ticker = lid8_ticker;
   let lid = lid_source >> (64n - LID8SourceBitCount);
@@ -684,8 +772,8 @@ export function LID8Next(rng: RNG): LID8 {
     ticker = 0;
   } else {
     if(ticker >= LID8TickerMax) {
-      let time_now = TimestampNumber();
-      while (timestamp == time_now) time_now = TimestampNumber();
+      let time_now = TimestampSeconds();
+      while (timestamp == time_now) time_now = TimestampSeconds();
       ticker = 0;
       timestamp = time_now;
     }
