@@ -1,6 +1,8 @@
 
 LinearId is an npm package for generating 64-bit and 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. Please read [this ReadMe file on GitHub](https://github.com/AStarStartup/LinearId) for the latest updates, where you can also contribute code, bug reports, feature requests, documentation improvements, etc.
 
+![example workflow](https://github.com/AStarStartup/LinearId/actions/workflows/test.yml/badge.svg)
+
 ## Contributing
 
 We need so people to help test LinearId and improve our documentation to ensure everything is working properly, to use LinearId with the popular database engines, and contribute to the unit tests to get optimal test coverage.
@@ -125,7 +127,7 @@ results = await db.select().from(UserAccounts).where(
 When rendering UI components on client and in many other situations you need to generate a UID, or a ref in React, without adding it to a database, so there is no need for a source id. JavaScript uses a millisecond timestamp natively, which when truncated to 32-bits provides an epoch of 49.7 days, which is much longer than the expected time that a webpage. It's not expected for users to need to generate 2^32 Local LID (LLID) per second, but it's nice and easy to just use either a 32-bit seconds timer or the lower 32-bits of a milliseconds timer in the Most Significant 32-bits ORed with a 32-bit sub-timer ticker; sub-timer meaning either sub-second or sub-millisecond.
 
 ```TypeScript
-import { LLIDNextString } from 'linearid';
+import { LLIDNextHex } from 'linearid';
 
 const ExampleItems = [ 'Foo', 'Bar' ]
 
