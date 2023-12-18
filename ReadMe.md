@@ -78,7 +78,8 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 // or
 
 const { randomInt } = require('crypto');
-const { HexToBigInt, LIDNext, LIDNextBuffer, LIDToHex } = require("linearid");
+const { BufferToBigInt, HexToBigInt, LIDNext, LIDNextBuffer
+} = require("linearid");
 ```
 
 **5** Generate LIDs (Drizzle example in TypeScript):
@@ -92,7 +93,7 @@ console.log('\nExample LID hex string:0x' + LidHexString);
 lid = HexToBigInt(lid_hex_string);
 
 let Buf = LIDNextBuffer(randomInt);
-lid = LIDFromBuffer(Buf);
+lid = BufferToBigInt(Buf);
 
 const InsertUserAccount = async (account: UserAccount) => {
   return db.insert(UserAccounts).values(account);
