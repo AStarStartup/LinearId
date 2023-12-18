@@ -30,8 +30,8 @@ jobs:
 
       # Build project.
       - name: Build
-        run: tsup ./Source/index.ts --format cjs, esm --dts
+        run: npm run build
 
       # Run tests.
       - name: Test
-        run: jest
+        run: npm run test
