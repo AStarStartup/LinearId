@@ -24,13 +24,13 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
-      # Install packages.
-      - name: Install
-        run: npm install
-
       # Clear cache.
       - name: Clear cache
         run: npm cache clean
+
+      # Install packages.
+      - name: Install
+        run: npm install
 
       # Build project.
       - name: Build
