@@ -1,12 +1,12 @@
 // Copyright AStartup. MIT License. You can find a copy of the license at 
 // http://github.com/AStarStartup/LinearId
 
-const { randomInt } = require('crypto');
-const { BigIntCountDecimals, BigIntInBitRange, BigIntIsInBitRange, 
+import { randomInt as rng } from 'crypto';
+import { BigIntCountDecimals, BigIntInBitRange, BigIntIsInBitRange, 
   BigIntToBuffer, BigIntRandom, BinaryPad, BinaryPadBitCount, BufferToBigInt, 
   ByteCountBits, HexToBigInt, HexToBuffer, HexPadBitCount, NumberCountBits, 
   NumberCountBytes, NumberCountDecimals
-} = require('linearid'); 
+} from '../dist';
 
 import { expect, test } from '@jest/globals';
 import { NumberInTestRange, TestBitCount, TestBitsUpTo, TestCount, 
@@ -41,7 +41,7 @@ test('Utilities.Test', () => {
   //console.log('Testing BigIntRandom...');
   for(i = 0; i < TestPrintCount; ++i) {
     const BitCount = 64;
-    const STR = BigIntRandom(randomInt, BitCount);
+    const STR = BigIntRandom(rng, BitCount);
     if(STR.toString(2).length > BitCount)
       console.log('STR: ' + STR + ' 0b' + STR.toString(2) + ':' + 
                   STR.toString(2).length + '\n');
@@ -56,7 +56,7 @@ test('Utilities.Test', () => {
   for(i = 1; i <= TestBitsUpTo; ++i) {
     for(j = 1; j <= 100; ++j) {
       //console.log('-------------------------------------------------------');
-      const V = BigIntInBitRange(randomInt, i, i);
+      const V = BigIntInBitRange(rng, i, i);
       let padded = BinaryPad(V, 64);
       if (!BigIntIsInBitRange(V, i, i))
         console.log(i + '.) V:0x' + V.toString(16) + 
@@ -100,7 +100,7 @@ test('Utilities.Test', () => {
 
   //console.log('Testing HexToBigInt');
   for(j = 0; j < TestPrintCount; ++j) {
-    let Value = BigIntRandom(randomInt);
+    let Value = BigIntRandom(rng);
     //console.log('Value:0x' + Value);
     const Result = HexToBigInt(Value.toString(16));
     //console.log('Result:' + Result);
@@ -112,7 +112,7 @@ test('Utilities.Test', () => {
     expect(Value).toBe(Result);
   }
   
-  let int_i = BigIntRandom(randomInt);
+  let int_i = BigIntRandom(rng);
 
   let str = int_i.toString(16);
   let int_p = HexToBigInt(str);
@@ -136,7 +136,7 @@ test('Utilities.Test', () => {
   
   for(j = 2; j < TestBitCount; ++j) {
     for (let i = 0; i < (j < TestsPerBit ? j >> 2 : TestsPerBit); ++i) {
-      int_i = BigIntInBitRange(randomInt, j < TestsPerBit ? 1 : j, j);
+      int_i = BigIntInBitRange(rng, j < TestsPerBit ? 1 : j, j);
       const IntIHex = int_i.toString(16);
       int_p = HexToBigInt(IntIHex);
       BigIntVerify(int_i, int_p, '::BigIntToHex');

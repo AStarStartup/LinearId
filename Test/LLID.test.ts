@@ -1,11 +1,11 @@
 // Copyright AStartup. MIT License. You can find a copy of the license at 
 // http://github.com/AStarStartup/LinearId
 
-const { randomInt: rng } = require('crypto');
-const { BigIntInRange, BinaryPad, BinaryPadBitCount, HexPad, HexPadBitCount, 
+import { randomInt as rng } from 'crypto';
+import { BigIntInRange, BinaryPad, BinaryPadBitCount, HexPad, HexPadBitCount, 
   LLIDPrint, LLIDTickerBitCount, LLIDTimestampBitCount, LLIDNext, LLIDPack, 
   LLIDTimestamp, LLIDUnpack, NumberCountDecimals, NumberPad, 
-  TimestampSecondsNextBigInt } = require('linearid');
+  TimestampSecondsNextBigInt } from '../dist';
 
 import { expect, test } from '@jest/globals';
 import { TestCount, TestLoopCount, } from './Global';
@@ -16,9 +16,13 @@ const TestPrintCount = 0;
 // The window where a timestamp is valid in seconds.
 const TimestampWindow = 100n;
 
-function LLIDCompare(expected: bigint, received: bigint, 
+function LLIDCompare(expected: bigint, received: bigint | undefined, 
     tag:string = '', index: number) {
   const UpperBounds = expected + TimestampWindow;
+  if(received == undefined) {
+    console.log("LID64Compare::ERROR: received == undefined");
+    return;
+  }
   if(received < expected || received > UpperBounds)
     console.log('\nUnexpected error at LLID' + tag + ' 𝚫:' + TimestampWindow +
       ' ' + (received < expected ? 'low' : 'high') +
@@ -52,7 +56,7 @@ test('LLID.Tests', () => {
   const DecimalCount = NumberCountDecimals(TestPrintCount);
   for(let k = 0; k < TestLoopCount; k++) {
     for(i = 0; i < TestPrintCount; ++i) {
-      let lid = LLIDNext(rng);
+      let lid = LLIDNext();
       o += NumberPad(i, DecimalCount) + ': ' + HexPad(lid) + "  "
          + BinaryPad(lid) + ' 0d' + lid + '\n';
     }
@@ -62,20 +66,20 @@ test('LLID.Tests', () => {
     let then = Expected;
     while (Expected == then) then = TimestampSecondsNextBigInt();
     for(let i = 0; i < TestCount; ++i) {
-      const Received = LLIDTimestamp(LLIDNext(rng));
+      const Received = LLIDTimestamp(LLIDNext());
       LLIDCompare(Expected, Received, '::LLIDTimestamp::A', i);
     }
     Expected = TimestampSecondsNextBigInt();
     o = '';
     for(i = 0; i < TestPrintCount; ++i) {
-      const Received = LLIDTimestamp(LLIDNext(rng));
+      const Received = LLIDTimestamp(LLIDNext());
       o += HexPad(Received) + ' ' + BinaryPad(Received) + ' 0d' + Received + 
            '\n';
     }
     if(TestPrintCount > 0) console.log(o);
     Expected = TimestampSecondsNextBigInt();
     for(i = 0; i < TestCount; ++i) {
-      const Received = LLIDTimestamp(LLIDNext(rng));
+      const Received = LLIDTimestamp(LLIDNext());
       LLIDCompare(Expected, Received, '::LLIDTimestamp::B', i);
     }
   }

@@ -286,12 +286,14 @@ export function BigIntPad(value: bigint, decimals_max: number,
 
 // Pads a binary string with leading zeros aligned to a bit boundary.
 // @warning Does not check if the value string is not a binary string.
-export function BinaryPad(value: string | number | bigint,
+export function BinaryPad(value: string | number | bigint | undefined,
                           bit_count: number = 64, prefix: string = '0b',
                           pad: string = '0') { 
   if(bit_count <= 0) return '';
   const str = ((typeof value).toString() == 'string')
             ? String(value)
+            : value == undefined
+            ? ''
             : value.toString(2);
   if(bit_count < str.length) {
     if (bit_count < 3) return prefix + '.'.repeat(bit_count);
@@ -300,11 +302,11 @@ export function BinaryPad(value: string | number | bigint,
   return prefix + pad.repeat(bit_count - str.length) + str;
 }
 
-export function BinaryPadBitCount(value: string | number | bigint,
+export function BinaryPadBitCount(value: string | number | bigint | undefined,
     bit_count: number = 64, prefix: string = '0b') { 
   return BinaryPad(value, bit_count, prefix) + ':' + 
-    ((typeof value).toString() == 'string' ? String(value).length 
-                                           : BigInt(value).toString(2).length)
+    ((typeof value).toString() == 'string' 
+      ? String(value).length  : BigInt(value ?? 0n).toString(2).length)
 }
 
 // Converts a Buffer to a BigInt.
@@ -326,13 +328,15 @@ export function BufferToHex(buf: Buffer): string {
 
 // Pads a hex value with leading zeros aligned to n-bit boundary.
 // @warning Does not check if the value string is not a hex string.
-export function HexPad(value: string | number | bigint, 
+export function HexPad(value: string | number | bigint | undefined, 
     bit_count: number = 64, prefix: string = '0x', pad: string = '0'): string
 {
   if(bit_count <= 0) return '';
   const HexCount = (bit_count >> 2) + ((bit_count & 0x3) ? 1 : 0);
   let hex = (typeof value).toString() == 'string'
           ? String(value)
+          : value == undefined
+          ? ''
           : value.toString(16);
   if(hex.length > HexCount) {
     if (HexCount < 3) return prefix + '.'.repeat(HexCount);
@@ -343,11 +347,11 @@ export function HexPad(value: string | number | bigint,
 
 // Pads a hex value with leading zeros aligned to n-bit boundary 
 // followed by the bit count.
-export function HexPadBitCount(value: string | number | bigint,
+export function HexPadBitCount(value: string | number | bigint | undefined,
   bit_count: number = 64, prefix: string = '0x') { 
   return HexPad(value, bit_count, prefix, ) + ':' + 
     ((typeof value).toString() == 'string' ? String(value).length 
-                                           : BinaryCount(BigInt(value)));
+                                           : BinaryCount(BigInt(value ?? 0n)));
 }
 
 // Converts a hex character string to a number.
@@ -575,7 +579,8 @@ export function LLIDPack(timestamp: bigint, ticker: bigint): LLID {
 export function LLIDPrint(llid: LLID) {
   const [ Timestamp, Ticker ] = LLIDUnpack(llid);
   const Time = new Date(Number(Timestamp));
-  return Time.toISOString().split('T')[0] + ' tick:' + Ticker;
+  return 'LLID:{ ' + Time.toISOString().split('T')[0] + ' tick:' + Ticker
+       + ' }';
 }
 
 // Generates the next Local LID.
@@ -638,7 +643,8 @@ export function LIDSource(lid: LID128) {
 }
 
 // Extracts the timestamp, ticker, and source from a LID64.
-export function LIDPack(timestamp: number, ticker: number, source:bigint)
+export function LIDPack(timestamp: bigint | number, ticker: bigint | number, 
+    source:bigint)
 : LID128 {
   return (BigInt(timestamp) << (LIDTickerBitCount + LIDSourceBitCount)) | 
          (BigInt(ticker) << LIDSourceBitCount) | source;
@@ -653,8 +659,9 @@ export function LIDUnpack(lid: LLID) {
 export function LIDPrint(lid: LLID) {
   const [ Timestamp, Ticker, Source ] = LIDUnpack(lid);
   const Time = new Date(Number(Timestamp));
-  return Time.toISOString().split('T')[0] + ' tick:' + Ticker
-       + ' source:' + Source;
+  return 'LLID:{ timestamp: ' + Time.toISOString().split('T')[0] 
+       + '\n       tick   :' + Ticker
+       + '\n       source :' + Source + ' }';
 }
 
 // Gets the lid_source.
@@ -743,7 +750,8 @@ export function LID64SourceId(): bigint {
 }
 
 // Extracts the timestamp, ticker, and source from a LID64.
-export function LID64Pack(timestamp: number, ticker: number, source: bigint)
+export function LID64Pack(timestamp: bigint | number, ticker: bigint | number, 
+    source: bigint)
 : LID64 {
   return (BigInt(timestamp) << (64n - LID64TimestampBitCount)) | 
          (BigInt(ticker) << LID64SourceBitCount) |
@@ -759,8 +767,9 @@ export function LID64Unpack(lid: LLID) {
 export function LID64Print(lid: LLID) {
   const [ Timestamp, Ticker, Source ] = LID64Unpack(lid);
   const Time = new Date(Number(Timestamp));
-  return Time.toISOString().split('T')[0] + ' tick:' + Ticker
-       + ' source:' + Source;
+  return 'LID64:{ timestamp:' + Time.toISOString().split('T')[0] 
+       + '\n        tick     :' + Ticker
+       + '\n        source   :' + Source + ' }';
 }
 
 // Generates the next 64-bit/128-bit LID.
