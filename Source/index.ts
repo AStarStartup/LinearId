@@ -579,7 +579,8 @@ export function LLIDPack(timestamp: bigint, ticker: bigint): LLID {
 export function LLIDPrint(llid: LLID) {
   const [ Timestamp, Ticker ] = LLIDUnpack(llid);
   const Time = new Date(Number(Timestamp));
-  return Time.toISOString().split('T')[0] + ' tick:' + Ticker;
+  return 'LLID:{ ' + Time.toISOString().split('T')[0] + ' tick:' + Ticker
+       + ' }';
 }
 
 // Generates the next Local LID.
@@ -658,8 +659,9 @@ export function LIDUnpack(lid: LLID) {
 export function LIDPrint(lid: LLID) {
   const [ Timestamp, Ticker, Source ] = LIDUnpack(lid);
   const Time = new Date(Number(Timestamp));
-  return Time.toISOString().split('T')[0] + ' tick:' + Ticker
-       + ' source:' + Source;
+  return 'LLID:{ timestamp: ' + Time.toISOString().split('T')[0] 
+       + '\n       tick   :' + Ticker
+       + '\n       source :' + Source + ' }';
 }
 
 // Gets the lid_source.
@@ -765,8 +767,9 @@ export function LID64Unpack(lid: LLID) {
 export function LID64Print(lid: LLID) {
   const [ Timestamp, Ticker, Source ] = LID64Unpack(lid);
   const Time = new Date(Number(Timestamp));
-  return Time.toISOString().split('T')[0] + ' tick:' + Ticker
-       + ' source:' + Source;
+  return 'LID64:{ timestamp:' + Time.toISOString().split('T')[0] 
+       + '\n        tick     :' + Ticker
+       + '\n        source   :' + Source + ' }';
 }
 
 // Generates the next 64-bit/128-bit LID.
