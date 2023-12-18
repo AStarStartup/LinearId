@@ -24,14 +24,14 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
-      # Install required deps for action
+      # Install packages.
       - name: Install
         run: npm install
 
-      # Build project
+      # Build project.
       - name: Build
-        run: npm run build
+        run: tsup ./Source/index.ts --format cjs, esm --dts
 
-      # Finally, run our tests
+      # Run tests.
       - name: Test
-        run: npm run test
+        run: jest
