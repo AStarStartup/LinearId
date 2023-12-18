@@ -2,11 +2,11 @@
 // http://github.com/AStarStartup/LinearId
 
 const { randomInt } = require('crypto');
-const { BigIntCountDecimals, BigIntInBitRange, BigIntIsInBitRange, 
+import { BigIntCountDecimals, BigIntInBitRange, BigIntIsInBitRange, 
   BigIntToBuffer, BigIntRandom, BinaryPad, BinaryPadBitCount, BufferToBigInt, 
   ByteCountBits, HexToBigInt, HexToBuffer, HexPadBitCount, NumberCountBits, 
   NumberCountBytes, NumberCountDecimals
-} = require('linearid'); 
+} from '../Source';
 
 import { expect, test } from '@jest/globals';
 import { NumberInTestRange, TestBitCount, TestBitsUpTo, TestCount, 

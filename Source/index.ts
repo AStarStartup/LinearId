@@ -638,7 +638,8 @@ export function LIDSource(lid: LID128) {
 }
 
 // Extracts the timestamp, ticker, and source from a LID64.
-export function LIDPack(timestamp: number, ticker: number, source:bigint)
+export function LIDPack(timestamp: bigint | number, ticker: bigint | number, 
+    source:bigint)
 : LID128 {
   return (BigInt(timestamp) << (LIDTickerBitCount + LIDSourceBitCount)) | 
          (BigInt(ticker) << LIDSourceBitCount) | source;
@@ -743,7 +744,8 @@ export function LID64SourceId(): bigint {
 }
 
 // Extracts the timestamp, ticker, and source from a LID64.
-export function LID64Pack(timestamp: number, ticker: number, source: bigint)
+export function LID64Pack(timestamp: bigint | number, ticker: bigint | number, 
+    source: bigint)
 : LID64 {
   return (BigInt(timestamp) << (64n - LID64TimestampBitCount)) | 
          (BigInt(ticker) << LID64SourceBitCount) |
