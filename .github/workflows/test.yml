@@ -28,6 +28,10 @@ jobs:
       - name: Install
         run: npm install
 
+      # Clear cache.
+      - name: Clear cache
+        run: npm cache clean –force
+
       # Build project.
       - name: Build
         run: npm run build
