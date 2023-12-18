@@ -12,8 +12,8 @@ import { expect, test } from '@jest/globals';
 import { NumberInTestRange, TestBitCount, TestBitsUpTo, TestCount, 
   TestsPerBit } from './Global';
 
-  // Number of times to print the test loop.
-  export const TestPrintCount = 0;
+// Number of times to print the test loop.
+const TestPrintCount = 0;
 
 // Asserts the lsw_i and msw_i are the same as the lsw_p and msw_p 
 // respectively.
@@ -29,7 +29,7 @@ export function BigIntVerify(expected: bigint, found: bigint, tag: string) {
   expect(expected == found).toBe(true); 
 }
 
-test("Utilities", () => {
+test('Utilities.Test', () => {
   let i = 0;
   let j = 0;
 

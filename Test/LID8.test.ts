@@ -5,14 +5,17 @@ const { randomInt: rng } = require('crypto');
 const { BigIntInRange, BinaryPad, BinaryPadBitCount, HexPad, HexPadBitCount, 
   LID8Print, LID8SourceBitCount, LID8TickerBitCount, LID8TimestampBitCount, 
   LID8Next, LID8Pack, LID8Ticker, LID8Timestamp, LID8Source, LID8Unpack, 
-  NumberCountDecimals, NumberPad, TimestampSecondsNextBigInt, TimestampWindow 
+  NumberCountDecimals, NumberPad, TimestampSecondsNextBigInt 
 } = require('linearid');
 
 import { expect, test } from '@jest/globals';
 import { TestCount, TestLoopCount } from './Global';
 
 // Number of times to print the test loop.
-export const TestPrintCount = 16;
+const TestPrintCount = 0;
+
+// The window where a timestamp is valid in seconds.
+const TimestampWindow = 100n;
 
 function LID8Compare(expected: bigint, received: bigint, 
     tag:string = '', index: number) {
@@ -33,7 +36,7 @@ function LID8Compare(expected: bigint, received: bigint,
   expect(received).toBeLessThanOrEqual(UpperBounds);
 }
 
-test("LID8 works", () => {
+test('LID8.Test', () => {
   let i = 0;
   for(i = 0; i < TestCount; ++i) {
     const Timestamp_E = BigIntInRange(rng, 0, 
@@ -54,8 +57,8 @@ test("LID8 works", () => {
   for(let k = 0; k < TestLoopCount; k++) {
     for(i = 0; i < TestPrintCount; ++i) {
       let lid = LID8Next(rng);
-      o += NumberPad(i, DecimalCount) + '.) ' + HexPad(lid, 64) + "  "
-         + BinaryPad(lid, 64) + ' 0d' + lid + '\n';
+      o += NumberPad(i, DecimalCount) + '.) ' + HexPad(lid) + "  "
+         + BinaryPad(lid) + ' 0d' + lid + '\n';
     }
     if(TestPrintCount > 0) console.log(o);
     let timestamp_e = TimestampSecondsNextBigInt();
@@ -69,16 +72,16 @@ test("LID8 works", () => {
     o = '::LID8Next: timestamp_e:' + HexPadBitCount(timestamp_e) + '\n';
     for(i = 0; i < TestPrintCount; ++i) {
       const Lid = LID8Next(rng);
-      o += 'Lid       : ' + HexPad(Lid, 64) + ' ' + BinaryPad(Lid, 64) + '\n';
+      o += 'Lid       : ' + HexPad(Lid) + ' ' + BinaryPad(Lid) + '\n';
       const TimestampR = LID8Timestamp(Lid);
       const TickerR = LID8Ticker(Lid);
       const SourceR = LID8Source(Lid);
-      o += 'TimestampR: ' + HexPad(TimestampR, 64) + ' ' 
-         + BinaryPad(TimestampR, 64) + '\n'
-         + 'TickerR   : ' + HexPad(TickerR, 64) + ' ' 
-         + BinaryPad(TickerR, 64) + '\n'
-         + 'SourceR   : ' + HexPad(SourceR, 64) + ' ' 
-         + BinaryPad(SourceR, 64) + '\n\n';
+      o += 'TimestampR: ' + HexPad(TimestampR) + ' ' 
+         + BinaryPad(TimestampR) + '\n'
+         + 'TickerR   : ' + HexPad(TickerR) + ' ' 
+         + BinaryPad(TickerR) + '\n'
+         + 'SourceR   : ' + HexPad(SourceR) + ' ' 
+         + BinaryPad(SourceR) + '\n\n';
     }
     if(TestPrintCount > 0) console.log(o);
     for(i = 0; i < TestCount; ++i) {
