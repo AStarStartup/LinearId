@@ -30,7 +30,7 @@ jobs:
 
       # Clear cache.
       - name: Clear cache
-        run: npm cache clean –force
+        run: npm cache clean –-force
 
       # Build project.
       - name: Build
