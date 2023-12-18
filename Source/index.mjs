@@ -4,6 +4,6 @@
 import { LIDNext } from '../dist';
 import { randomInt } from 'crypto';
 
-export function LIDNextMJS() {
+export function LIDNext() {
   return LIDNext(randomInt);
 }

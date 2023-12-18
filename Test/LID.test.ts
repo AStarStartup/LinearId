@@ -1,12 +1,12 @@
 // Copyright AStartup. MIT License. You can find a copy of the license at 
 // http://github.com/AStarStartup/LinearId
 
-const { randomInt: rng } = require('crypto');
+import { randomInt as rng } from 'crypto';
 import { BigIntInRange, BinaryPad, BinaryPadBitCount, HexPad, HexPadBitCount, 
   LIDPrint, LIDSourceBitCount, LIDTickerBitCount, LIDTimestampBitCount, 
   LIDNext, LIDPack, LIDTimestamp, LIDUnpack, NumberCountDecimals, NumberPad, 
   TimestampSecondsNextBigInt 
-} from '../Source';
+} from '../dist';
 
 import { expect, test } from '@jest/globals';
 import { TestCount, TestLoopCount } from './Global';
@@ -17,9 +17,13 @@ const TestPrintCount = 0;
 // The window where a timestamp is valid in seconds.
 const TimestampWindow = 100n;
 
-function LIDCompare(expected: bigint, received: bigint, 
+function LIDCompare(expected: bigint, received: bigint | undefined, 
     tag:string = '', index: number) {
   const UpperBounds = expected + TimestampWindow;
+  if(received == undefined) {
+    console.log("LID64Compare::ERROR: received == undefined");
+    return;
+  }
   if(received < expected || received > UpperBounds)
     console.log('\nUnexpected error at LID' + tag + ' 𝚫:' + TimestampWindow
     + ' ' + (received < expected ? 'low' : 'high') 
