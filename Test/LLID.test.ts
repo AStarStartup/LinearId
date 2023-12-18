@@ -5,11 +5,13 @@ const { randomInt: rng } = require('crypto');
 const { BigIntInRange, BinaryPad, BinaryPadBitCount, HexPad, HexPadBitCount, 
   LLIDPrint, LLIDTickerBitCount, LLIDTimestampBitCount, LLIDNext, LLIDPack, 
   LLIDTimestamp, LLIDUnpack, NumberCountDecimals, NumberPad, 
-  TimestampSecondsAsBigInt, TimestampWindow } = require('linearid');
+  TimestampSecondsNextBigInt, TimestampWindow } = require('linearid');
 
 import { expect, test } from '@jest/globals';
-import { TestCount, TestLoopCount, TestPrintCount 
-} from './Global';
+import { TestCount, TestLoopCount, } from './Global';
+
+// Number of times to print the test loop.
+export const TestPrintCount = 0;
 
 function LLIDCompare(expected: bigint, received: bigint, 
     tag:string = '', index: number) {
@@ -31,8 +33,6 @@ function LLIDCompare(expected: bigint, received: bigint,
 }
 
 test("LLID works", () => {
-  //console.log("Testing LLIDPrint..." + LLIDPrint(LLIDNext()));
-  expect(LLIDPrint(LLIDNext() != 0n)).not.toBe(true);
   let i = 0;
   for(i = 0; i < TestCount; ++i) {
     const Timestamp_E = BigIntInRange(rng, 0, 
@@ -54,18 +54,15 @@ test("LLID works", () => {
          + BinaryPad(lid) + ' 0d' + lid + '\n';
     }
     if(TestPrintCount > 0) console.log(o);
-    let Expected = TimestampSecondsAsBigInt();
+    let Expected = TimestampSecondsNextBigInt();
     // Wait until the next second to start the test.
     let then = Expected;
-    while (Expected == then) then = TimestampSecondsAsBigInt();
+    while (Expected == then) then = TimestampSecondsNextBigInt();
     for(let i = 0; i < TestCount; ++i) {
       const Received = LLIDTimestamp(LLIDNext(rng));
       LLIDCompare(Expected, Received, '::LLIDTimestamp::A', i);
     }
-    Expected = TimestampSecondsAsBigInt();
-    then = Expected;
-    while (Expected == then) then = TimestampSecondsAsBigInt();
-    console.log('Waited ' + (then - Expected) + ' seconds');
+    Expected = TimestampSecondsNextBigInt();
     o = '';
     for(i = 0; i < TestPrintCount; ++i) {
       const Received = LLIDTimestamp(LLIDNext(rng));
@@ -73,9 +70,11 @@ test("LLID works", () => {
            '\n';
     }
     if(TestPrintCount > 0) console.log(o);
+    Expected = TimestampSecondsNextBigInt();
     for(i = 0; i < TestCount; ++i) {
       const Received = LLIDTimestamp(LLIDNext(rng));
       LLIDCompare(Expected, Received, '::LLIDTimestamp::B', i);
     }
   }
+  expect(LLIDPrint(LLIDNext())).not.toBe(true);
 });

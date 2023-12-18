@@ -9,13 +9,10 @@ export const TestBitCount = 17;
 export const TestBitsUpTo = 64;
 
 //  Number of times to run the test loop.
-export const TestCount = 1 << TestBitCount;
+export const TestCount = 1024; //1 << TestBitCount;
 
 // Number of test loop counts to iterate through.
 export const TestLoopCount = 2;
-
-// Number of times to print the test loop.
-export const TestPrintCount = 16;
 
 // Number of times to test each bit range with random numbers. Default: 1024
 export const TestsPerBit = 1 << 10;

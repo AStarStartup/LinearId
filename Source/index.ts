@@ -41,8 +41,8 @@ export const LID8TimestampBitCount = 32n;
 export const LID8TickerBitCount = 16n;
 
 // The number of bits in a 8-byte LID subsecond ticker.
-export const LID8SourceBitCount = 64n - LID8TimestampBitCount - 
-                                  LID8TickerBitCount;
+export const LID8SourceBitCount = 64n - LID8TimestampBitCount 
+                                - LID8TickerBitCount;
 
 // The maximum value the 8-byte LID ticker, which is also the mask.
 export const LID8TickerMax = (1n << LID8TickerBitCount) - 1n;
@@ -528,7 +528,7 @@ export function TimestampSecondsNext() {
 }
 
 // Gets the current date-time in seconds as a bigint.
-export function TimestampNextAsBigInt(): bigint {
+export function TimestampSecondsNextBigInt(): bigint {
   return BigInt(TimestampSecondsNext());
 }
 
@@ -549,7 +549,7 @@ let lid_ticker: number = 0;
 let lid_source: bigint = 0n;
 
 // The LID8 Source Id as a number.
-let lid8_source: number = 0;
+let lid8_source: bigint = 0n;
 
 // Flat to check the lid upon epoch. 
 let lid_source_check_on_epoch: boolean = false; 
@@ -567,8 +567,7 @@ export type LLID = bigint;
 
 // Extracts the timestamp.
 export function LLIDTimestamp(lid: LLID) {
-  return (BigInt(lid) >> LLIDTickerBitCount) 
-       & ((1n << LLIDTimestampBitCount) - 1n);
+  return (BigInt(lid) >> LLIDTickerBitCount);
 }
 
 // Extracts the ticker count.
@@ -672,6 +671,7 @@ export function LIDSourceNext(rng: RNG) {
   const LSB = BigInt(rng(1, (1 << 48) - 1));
   const MSB = BigInt(rng(0, MSBMask));
   lid_source = LSB | MSB << 48n;
+  lid8_source = lid_source & ((1n << LID8SourceBitCount) - 1n);
   lid_source_check_on_epoch = (lid_source >> 64n) == 0n;
 }
 
@@ -722,8 +722,7 @@ export type LID8 = bigint;
 
 // Extracts the timestamp.
 export function LID8Timestamp(lid: LID8) {
-  const Mask = (1n << LID8TimestampBitCount) - 1n;
-  return (lid >> (LID8TickerBitCount + LID8TimestampBitCount)) & Mask;
+  return (lid >> (64n - LID8TimestampBitCount));
 }
 
 // Extracts the ticker count.
@@ -736,7 +735,8 @@ export function LID8Source(lid: LID8) {
   return lid & ((1n << LID8SourceBitCount) - 1n);
 }
 
-export function LID8SourceId(): number {
+// Returns the lid8_source.
+export function LID8SourceId(): bigint {
   return lid8_source;
 }
 
@@ -749,13 +749,13 @@ export function LID8Pack(timestamp: number, ticker: number, source: bigint)
 }
 
 // Extracts the timestamp and ticker from a LLID.
-export function LID8Unpack(llid: LLID) {
-  return [ LID8Timestamp(llid), LID8Ticker(llid) ];
+export function LID8Unpack(lid: LLID) {
+  return [ LID8Timestamp(lid), LID8Ticker(lid), LID8Source(lid) ];
 }
 
 // Prints a LID to a string.
-export function LID8Print(llid: LLID) {
-  const [ Timestamp, Ticker ] = LLIDUnpack(llid);
+export function LID8Print(lid: LLID) {
+  const [ Timestamp, Ticker ] = LLIDUnpack(lid);
   const Time = new Date(Number(Timestamp));
   return Time.toISOString().split('T')[0] + ' tick:' + Ticker;
 }
@@ -772,18 +772,16 @@ export function LID8Next(rng: RNG): LID8 {
     ticker = 0;
   } else {
     if(ticker >= LID8TickerMax) {
-      let time_now = TimestampSeconds();
-      while (timestamp == time_now) time_now = TimestampSeconds();
+      timestamp = TimestampSecondsNext();
       ticker = 0;
-      timestamp = time_now;
     }
     if(lid_source_check_on_epoch) {
       if(timestamp == 0 && ticker == 0) ticker = 1;
     }
   }
-  lid8_ticker = ticker;
+  lid8_ticker = ticker + 1;
   return LID8Pack(timestamp, ticker, 
-                  lid_source & ((1n << LIDSourceBitCount) - 1n));
+                  lid8_source);
 }
 
 // Generates the next Local LID hex string.
