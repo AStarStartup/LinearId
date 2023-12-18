@@ -25,9 +25,13 @@ jobs:
             ${{ runner.os }}-
 
       # Install required deps for action
-      - name: Install Dependencies
-        run: npm cache verify && npm install
+      - name: Install
+        run: npm install
+
+      # Build project
+      - name: Build
+        run: npm run build
 
       # Finally, run our tests
-      - name: Run the tests
+      - name: Test
         run: npm run test
