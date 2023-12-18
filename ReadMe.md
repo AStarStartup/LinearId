@@ -1,13 +1,9 @@
 
 LinearId is an npm package for generating 64-bit and 128-bit monotonic unique IDs for use with sharded databases like PlanetScale. Please read [this ReadMe file on GitHub](https://github.com/AStarStartup/LinearId) for the latest updates, where you can also contribute code, bug reports, feature requests, documentation improvements, etc.
 
-## 2023/12/5: Temporarily Broken to Implement GitHub Actions
-
-I am preparing to release the new v0.2.0 version of LinearId with the 64-bit LID8 and 128-bit LID16 format, this isn't actually v0.2.0, but it's close to it and I have too much work to risk losing. The main branch of this repo is possibly broken because I have a new Jest unit test but it shouldn't take long; sorry, it should work but I have not tested that. I'm not the best with GitHub and I'm configuring the GitHub Actions to auto-run the new Jest unit test when I make a pull request. I have no clue how long it will take to fix the rest of the tests, they were working before but I restructured everything to make it DRY to easier to test bit ranges.
-
 ## Contributing
 
-We need so people to help test LinearId to ensure everything is working properly, to use LinearId with the popular database engines, and contribute to the unit tests to get optimal test coverage.
+We need so people to help test LinearId and improve our documentation to ensure everything is working properly, to use LinearId with the popular database engines, and contribute to the unit tests to get optimal test coverage.
 
 I can't figure out how to configure the NPM package so we can use the import syntax, you have to use const require syntax for now. I can use some help on #11. Please start by reading the [Contributing Guide](./Contributing.md). Thanks.
 
@@ -17,7 +13,7 @@ When your website grows to a large number of users, you need to shard the databa
 
 Another solution is to use [Universally Unique Lexicographically Sortable Identifier (ULID)](https://github.com/ulid/spec), but it uses a 48-bit millisecond timestamp MSB and 80-byte random number in the LSB. There are two problems with this design approach. First is that the x86 CPU doesn't have a sub-second timestamp, so databases do not use them. This means that to translate the milliseconds to seconds when you want to work with the database and you will have to divide and multiple by 1000, which is slow and error prone. To get a sub-second timestamp on an x86 server will require a dedicated thread to do a spin clock with an inter-process pipe, which is complex and unnecessary. We want an approach that doesn't have to generate any random numbers at runtime and we work in seconds and it will work for almost everything for thousands of years.
 
-128-bit LinearId (LID16) use a 36-bit Unix second timestamp in the Most-Significant Bits (MSB) followed by a 22-bit sub-second spin ticker and 73-bit Cryptographically-Secure Generated-Upon-Boot Random Number (CSGUBRN):
+128-bit LinearId (LID16) use a 33-bit Unix second timestamp in the Most-Significant Bits (MSB) followed by a 22-bit sub-second spin ticker and 73-bit Cryptographically-Secure Generated-Upon-Boot Random Number (CSGUBRN):
 
 ```AsciiArt
  v--MSb                        128-bit LID                           LSb--v
@@ -37,8 +33,6 @@ The benefit of LID is that you don't need a naming server. You can use a 32-bit 
 To [optimize for SQL and other database searches](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide), we need to take advantage of the 64-bit index in the inode data structure used by all in-disk database engines. Indexing can be very complicated and you can index your database tables different ways at runtime to optimize your lookups. You don't just want to XOR the LID LSW and MSW together because you'll get clustering, the result will be non-monotonic, and as the database grows you will get collisions. For this reason it's better to create new database rows using 128-indexes that you then index contiguously.
 
 For users of your websites using LID, they will get HTML where the items with LIDs will show up with an HTML property uid that will be a string. When this string is 32-characters long (in hex so that is 16-bytes) that means it's a 128-bit LID that has not been compacted to a 64-bit UID. In the OS filesystem, inodes have timestamps, so when you see these 32-character UIDs you will need to extract the seconds from the timestamp and search for the database row by timestamp and UID.
-
-Right now I don't have it figured out how I'm supposed to convert the 128-bit LIDs to 64-bit unique id index (uidx). I will update this ASAP with multiple strategies to pack 128-bit LIDs into contiguous 64-bit uidx.
 
 Also, check out my open-source C++ software to at <https://github.com/KabukiStarship>. Thanks.
 
@@ -84,7 +78,7 @@ export const UserAccounts = mysqlTable('UserAccounts', {
 // or
 
 const { randomInt } = require('crypto');
-const { LIDFromHex, LIDNext, LIDNextBuffer, LIDToHex } = require("linearid");
+const { HexToBigInt, LIDNext, LIDNextBuffer, LIDToHex } = require("linearid");
 ```
 
 **5** Generate LIDs (Drizzle example in TypeScript):
@@ -92,13 +86,13 @@ const { LIDFromHex, LIDNext, LIDNextBuffer, LIDToHex } = require("linearid");
 ```TypeScript
 import { eq, gte, lte } from 'drizzle-orm';
 
-[lsb, msb] = LIDNext(randomInt);
-const lid_hex_string = LIDToHex(msb, lsb);
-console.log('\nExample LID hex string:0x' + lid_hex_string);
-[lsb2, msb2] = LIDFromHex(lid_hex_string);
+let lid = LIDNext(randomInt);
+const LidHexString = lid.toString(16);
+console.log('\nExample LID hex string:0x' + LidHexString);
+lid = HexToBigInt(lid_hex_string);
 
-let buf = LIDNextBuffer(randomInt);
-[lsb, msb] = LIDFromBuffer(buf);
+let Buf = LIDNextBuffer(randomInt);
+lid = LIDFromBuffer(Buf);
 
 const InsertUserAccount = async (account: UserAccount) => {
   return db.insert(UserAccounts).values(account);
@@ -116,7 +110,7 @@ const NewAccount: UserAccount = {
 
 InsertUserAccount(NewAccount);
 
-let Timestamp = LIDSeconds(lid);
+let Timestamp = LIDTimestamp(lid);
 
 /* I think this is how you do it but I'm still trying to get
 this working. If you know how to do this please contribute on
