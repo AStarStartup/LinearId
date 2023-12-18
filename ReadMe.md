@@ -99,18 +99,6 @@ const InsertUserAccount = async (account: UserAccount) => {
   return db.insert(UserAccounts).values(account);
 }
 
-/*/* XORing the LSW and MSW of the LID is not how you generate a 64-bit index,
-but it will work for small databases. The next version of LID will have 
-multiple strategies for generating 64-bit indexes from 128-bit LIDs by using
-the 128-bit LID and seconds timestamp to do SQL queries to avoid a full table
-scan and the clustering and non-linearity problems with the XOR method. */
-const NewAccount: UserAccount = {
-  id: lsb ^ msb,
-  uid: lid
-}
-
-InsertUserAccount(NewAccount);
-
 let Timestamp = LIDTimestamp(lid);
 
 /* I think this is how you do it but I'm still trying to get
@@ -120,7 +108,7 @@ let results = await db.select().from(UserAccounts).where(
   and(
     and(
       gte(users.date_created, Timestamp),
-      lte(users.date_created, Timestamp + 2)
+      lte(users.date_created, Timestamp + 2n)
     ),
     eq(users.uid, uid)
   )
@@ -143,7 +131,7 @@ const ExampleItems = [ 'Foo', 'Bar' ]
 
 export function ExampleList() {
   return <ul> { ExampleItems?.map((item) => {
-      return <li ref={LLIDNextString()}>{item}</li>
+      return <li ref={LLIDNextHex()}>{item}</li>
     })}
   <ul>
 }

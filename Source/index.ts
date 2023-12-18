@@ -553,7 +553,7 @@ export type LLID = bigint;
 
 // Extracts the timestamp.
 export function LLIDTimestamp(lid: LLID) {
-  return (BigInt(lid) >> LLIDTickerBitCount);
+  return BigInt(lid) >> LLIDTickerBitCount;
 }
 
 // Extracts the ticker count.
