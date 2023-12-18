@@ -26,7 +26,7 @@ jobs:
 
       # Install required deps for action
       - name: Install Dependencies
-        run: npm cache clean –force && npm install
+        run: npm cache clean && npm install
 
       # Finally, run our tests
       - name: Run the tests
