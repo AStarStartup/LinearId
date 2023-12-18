@@ -5,48 +5,66 @@ const { randomInt: rng } = require('crypto');
 const { BigIntInRange, BinaryPad, BinaryPadBitCount, HexPad, HexPadBitCount, 
   LIDPrint, LIDSourceBitCount, LIDTickerBitCount, LIDTimestampBitCount, 
   LIDNext, LIDPack, LIDTicker, LIDTimestamp, LIDSource, LIDUnpack, 
-  NumberCountDecimals, NumberPad, TimestampSecondsNextBigInt, TimestampWindow 
+  NumberCountDecimals, NumberPad, TimestampSecondsNextBigInt 
 } = require('linearid');
 
 import { expect, test } from '@jest/globals';
 import { TestCount, TestLoopCount } from './Global';
 
 // Number of times to print the test loop.
-export const TestPrintCount = 16;
+const TestPrintCount = 0;
+
+// The window where a timestamp is valid in seconds.
+const TimestampWindow = 100n;
 
 function LIDCompare(expected: bigint, received: bigint, 
     tag:string = '', index: number) {
   const UpperBounds = expected + TimestampWindow;
   if(received < expected || received > UpperBounds)
-    console.log('\nUnexpected error at LID' + tag + ' 𝚫:' + TimestampWindow +
-      ' ' + (received < expected ? 'low' : 'high') +
-      ' index:' + index +
-      '\nExpected: ' + HexPadBitCount(expected) + 
-      ' 0d' + expected + ' UpperBounds:' + UpperBounds +
-      '\nReceived: ' + HexPadBitCount(received) + 
-      ' 0d' + received + 
-      '\nXOR     : ' + HexPadBitCount(received ^ expected) + '\n' +
-      '\nExpected: ' + BinaryPadBitCount(expected) + 
-      '\nReceived: ' + BinaryPadBitCount(received) + 
-      '\nXOR     : ' + BinaryPadBitCount(received ^ expected));
+    console.log('\nUnexpected error at LID' + tag + ' 𝚫:' + TimestampWindow
+    + ' ' + (received < expected ? 'low' : 'high') 
+    + ' index:' + index 
+    + '\nExpected: ' + HexPadBitCount(expected)  
+    + ' 0d' + expected + ' UpperBounds:' + UpperBounds +
+    + '\nReceived: ' + HexPadBitCount(received)  
+    + ' 0d' + received  
+    + '\nXOR     : ' + HexPadBitCount(received ^ expected) + '\n' 
+    + '\nExpected: ' + BinaryPadBitCount(expected)  
+    + '\nReceived: ' + BinaryPadBitCount(received)  
+    + '\nXOR     : ' + BinaryPadBitCount(received ^ expected));
   expect(received).toBeGreaterThanOrEqual(expected);
   expect(received).toBeLessThanOrEqual(UpperBounds);
 }
 
-test("LID works", () => {
+test('LID.Test', () => {
   let i = 0;
   for(i = 0; i < TestCount; ++i) {
-    const Timestamp_E = BigIntInRange(rng, 0, 
+    const TimestampE = BigIntInRange(rng, 0, 
       (1n << LIDTimestampBitCount) - 1n);
-    const Ticker_E = BigIntInRange(rng, 0, 
+    const TickerE = BigIntInRange(rng, 0, 
       (1n << LIDTickerBitCount) - 1n);
-    const Source_E = BigIntInRange(rng, 0, 
+    const SourceE = BigIntInRange(rng, 0, 
       (1n << LIDSourceBitCount) - 1n);
-    const LID = LIDPack(Timestamp_E, Ticker_E, Source_E);
-    const [ Timestamp_R, Ticker_R , Source_R] = LIDUnpack(LID);
-    LIDCompare(Timestamp_E, Timestamp_R, '::Pack::Timestamp', i);
-    LIDCompare(Ticker_E, Ticker_R, '::Pack::Ticker', i);
-    LIDCompare(Source_E, Source_R, '::Pack::Source', i);
+    const Lid = LIDPack(TimestampE, TickerE, SourceE);
+    const [ TimestampR, TickerR , SourceR] = LIDUnpack(Lid);
+    // if(i < TestPrintCount)
+    //   console.log('\n\nLid       : ' + HexPad(Lid, 128) + ' ' 
+    //   + BinaryPad(Lid, 128)
+    //   + '\nTimestampE: ' + HexPad(TimestampE, 128) + ' ' 
+    //   + BinaryPad(TimestampE, 128)
+    //   + '\nTimestampR: ' + HexPad(TimestampR, 128) + ' ' 
+    //   + BinaryPad(TimestampR, 128)
+    //   + '\nTickerE   : ' + HexPad(TickerE, 128) + ' ' 
+    //   + BinaryPad(TickerE, 128)
+    //   + '\nTickerR   : ' + HexPad(TickerR, 128) + ' ' 
+    //   + BinaryPad(TickerR, 128)
+    //   + '\nSourceE   : ' + HexPad(SourceE, 128) + ' ' 
+    //   + BinaryPad(SourceE, 128)
+    //   + '\nSourceR   : ' + HexPad(SourceR, 128) + ' ' 
+    //   + BinaryPad(SourceR, 128));
+    LIDCompare(TimestampE, TimestampR, '::PackUnpack::Timestamp', i);
+    LIDCompare(TickerE, TickerR, '::PackUnpack::Ticker', i);
+    LIDCompare(SourceE, SourceR, '::PackUnpack::Source', i);
   }
 
   let o = '';
@@ -54,8 +72,8 @@ test("LID works", () => {
   for(let k = 0; k < TestLoopCount; k++) {
     for(i = 0; i < TestPrintCount; ++i) {
       let lid = LIDNext(rng);
-      o += NumberPad(i, DecimalCount) + '.) ' + HexPad(lid, 64) + "  "
-         + BinaryPad(lid, 64) + ' 0d' + lid + '\n';
+      o += '\n' + NumberPad(i, DecimalCount) + '.) ' + HexPad(lid, 128) + "  "
+         + BinaryPad(lid, 128);// + ' 0d' + lid;
     }
     if(TestPrintCount > 0) console.log(o);
     let timestamp_e = TimestampSecondsNextBigInt();
@@ -69,16 +87,14 @@ test("LID works", () => {
     o = '::LIDNext: timestamp_e:' + HexPadBitCount(timestamp_e) + '\n';
     for(i = 0; i < TestPrintCount; ++i) {
       const Lid = LIDNext(rng);
-      o += 'Lid       : ' + HexPad(Lid, 64) + ' ' + BinaryPad(Lid, 64) + '\n';
-      const TimestampR = LIDTimestamp(Lid);
-      const TickerR = LIDTicker(Lid);
-      const SourceR = LIDSource(Lid);
-      o += 'TimestampR: ' + HexPad(TimestampR, 64) + ' ' 
-         + BinaryPad(TimestampR, 64) + '\n'
-         + 'TickerR   : ' + HexPad(TickerR, 64) + ' ' 
-         + BinaryPad(TickerR, 64) + '\n'
-         + 'SourceR   : ' + HexPad(SourceR, 64) + ' ' 
-         + BinaryPad(SourceR, 64) + '\n\n';
+      const [ TimestampR, TickerR, SourceR ] = LIDUnpack(Lid);
+      o += '\nLid       : ' + HexPad(Lid, 128) + ' ' + BinaryPad(Lid, 128)
+         + '\nTimestampR: ' + HexPad(TimestampR, 128) + ' ' 
+         + BinaryPad(TimestampR, 128)
+         + '\nTickerR   : ' + HexPad(TickerR, 128) + ' ' 
+         + BinaryPad(TickerR, 128)
+         + '\nSourceR   : ' + HexPad(SourceR, 128) + ' ' 
+         + BinaryPad(SourceR, 128);
     }
     if(TestPrintCount > 0) console.log(o);
     for(i = 0; i < TestCount; ++i) {

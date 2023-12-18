@@ -5,13 +5,16 @@ const { randomInt: rng } = require('crypto');
 const { BigIntInRange, BinaryPad, BinaryPadBitCount, HexPad, HexPadBitCount, 
   LLIDPrint, LLIDTickerBitCount, LLIDTimestampBitCount, LLIDNext, LLIDPack, 
   LLIDTimestamp, LLIDUnpack, NumberCountDecimals, NumberPad, 
-  TimestampSecondsNextBigInt, TimestampWindow } = require('linearid');
+  TimestampSecondsNextBigInt } = require('linearid');
 
 import { expect, test } from '@jest/globals';
 import { TestCount, TestLoopCount, } from './Global';
 
 // Number of times to print the test loop.
-export const TestPrintCount = 0;
+const TestPrintCount = 0;
+
+// The window where a timestamp is valid in seconds.
+const TimestampWindow = 100n;
 
 function LLIDCompare(expected: bigint, received: bigint, 
     tag:string = '', index: number) {
@@ -32,7 +35,7 @@ function LLIDCompare(expected: bigint, received: bigint,
   expect(received).toBeLessThanOrEqual(UpperBounds);
 }
 
-test("LLID works", () => {
+test('LLID.Tests', () => {
   let i = 0;
   for(i = 0; i < TestCount; ++i) {
     const Timestamp_E = BigIntInRange(rng, 0, 
